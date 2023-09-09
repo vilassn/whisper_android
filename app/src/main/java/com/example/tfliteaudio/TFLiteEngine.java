@@ -73,9 +73,6 @@ public class TFLiteEngine {
     // Load filters and vocab data from pre-generated filters_vocab_gen.bin file
     private void loadFiltersAndVocab(boolean multilingual, String vocabPath) throws IOException {
 
-        // Set whether vocab is multilingual or not
-        mWhisper.vocab.setMultilingual(multilingual);
-
         // Read vocab file
         byte[] bytes = Files.readAllBytes(Paths.get(vocabPath));
         ByteBuffer vocabBuf = ByteBuffer.wrap(bytes);
@@ -118,7 +115,11 @@ public class TFLiteEngine {
         }
 
         // Add additional vocab ids
-        if (mWhisper.vocab.isMultilingual()) {
+        int mVocabAdditional;
+        if (!multilingual) {
+            mVocabAdditional = WhisperUtil.N_VOCAB_ENGLISH;
+        } else {
+            mVocabAdditional = WhisperUtil.N_VOCAB_MULTILINGUAL;
             mWhisper.vocab.tokenEot++;
             mWhisper.vocab.tokenSot++;
             mWhisper.vocab.tokenPrev++;
@@ -127,7 +128,7 @@ public class TFLiteEngine {
             mWhisper.vocab.tokenBeg++;
         }
 
-        for (int i = nVocab; i < mWhisper.vocab.nVocab; i++) {
+        for (int i = nVocab; i < mVocabAdditional; i++) {
             String word;
             if (i > mWhisper.vocab.tokenBeg) {
                 word = "[_TT_" + (i - mWhisper.vocab.tokenBeg) + "]";

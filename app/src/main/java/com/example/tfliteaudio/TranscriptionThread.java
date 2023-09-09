@@ -1,5 +1,6 @@
 package com.example.tfliteaudio;
 
+import android.content.Context;
 import android.util.Log;
 
 import java.io.File;
@@ -7,13 +8,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TranscriptionThread extends Thread {
     private final String TAG = "TranscriptionThread";
-    private final MainActivity mContext;
+    private final Context mContext;
+    private final UpdateListener mUpdateListener;
     private String mInputWavFile;
     private final TFLiteEngine mTFLiteEngine = new TFLiteEngine();
     private static final AtomicBoolean mTranscriptionInProgress = new AtomicBoolean(false);
 
-    public TranscriptionThread(MainActivity context) {
-        mContext = context;
+    public TranscriptionThread(MainActivity mainActivity) {
+        mContext = mainActivity;
+        mUpdateListener = mainActivity;
     }
 
     public void setTranscriptionInProgress(boolean value) {
@@ -35,7 +38,7 @@ public class TranscriptionThread extends Thread {
             // Initialize TFLiteEngine
             if (!mTFLiteEngine.isInitialized()) {
                 // Update progress to UI thread
-                mContext.updateUIStatus(mContext.getString(R.string.loading_model_and_vocab));
+                mUpdateListener.updateStatus(mContext.getString(R.string.loading_model_and_vocab));
 
                 // set true for multilingual support
                 // whisper.tflite => not multilingual
@@ -64,26 +67,26 @@ public class TranscriptionThread extends Thread {
 
                 if (new File(wavePath).exists()) {
                     // Update progress to UI thread
-                    mContext.updateUIStatus(mContext.getString(R.string.transcribing));
+                    mUpdateListener.updateStatus(mContext.getString(R.string.transcribing));
                     long startTime = System.currentTimeMillis();
 
                     // Get transcription from wav file
                     String result = mTFLiteEngine.getTranscription(wavePath);
 
                     // Display output result
-                    mContext.updateUIStatus(result);
+                    mUpdateListener.updateStatus(result);
                     long endTime = System.currentTimeMillis();
                     long timeTaken = endTime - startTime;
                     Log.d(TAG, "Time Taken for transcription: " + timeTaken + "ms");
                     Log.d(TAG, "Result len: " + result.length() + ", Result: " + result);
                 } else {
-                    mContext.updateUIStatus(mContext.getString(R.string.input_file_doesn_t_exist));
+                    mUpdateListener.updateStatus(mContext.getString(R.string.input_file_doesn_t_exist));
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
             Log.e(TAG, "Error..", e);
-            mContext.updateUIStatus(e.getMessage());
+            mUpdateListener.updateStatus(e.getMessage());
         } finally {
             mTranscriptionInProgress.set(false);
         }

@@ -1,6 +1,7 @@
 package com.example.tfliteaudio;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
@@ -15,11 +16,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class RecordingThread extends Thread {
     private final String TAG = "RecordingThread";
-    private final MainActivity mContext;
+    private final Context mContext;
+    private final UpdateListener mUpdateListener;
     private static final AtomicBoolean mRecordingInProgress = new AtomicBoolean(false);
 
-    public RecordingThread(MainActivity context) {
-        mContext = context;
+    public RecordingThread(MainActivity mainActivity) {
+        mContext = mainActivity;
+        mUpdateListener = mainActivity;
     }
 
     public void setRecordingInProgress(boolean value) {
@@ -37,7 +40,7 @@ public class RecordingThread extends Thread {
                 return;
             }
 
-            mContext.updateUIStatus(mContext.getString(R.string.recording));
+            mUpdateListener.updateStatus(mContext.getString(R.string.recording));
 
             int channels = 1;
             int bytesPerSample = 2;
@@ -75,7 +78,7 @@ public class RecordingThread extends Thread {
             String wavePath = mContext.getFilesDir() + File.separator + WaveUtil.RECORDING_FILE;
             WaveUtil.createWaveFile(wavePath, byteBuffer.array(), sampleRateInHz, channels, bytesPerSample);
             Log.d(TAG, "Recorded file: " + wavePath);
-            mContext.updateUIStatus(mContext.getString(R.string.recording_is_completed));
+            mUpdateListener.updateStatus(mContext.getString(R.string.recording_is_completed));
         } catch (Exception e) {
             throw new RuntimeException("Writing of recorded audio failed", e);
         }

@@ -70,7 +70,7 @@ public class WaveUtil {
 
             // Calculate the number of samples
             int bytesPerSample = bitsPerSample / 8;
-            int numSamples = (int) (dataLength / bytesPerSample);
+            int numSamples = dataLength / bytesPerSample;
 
             // Read the audio data
             byte[] audioData = new byte[dataLength];

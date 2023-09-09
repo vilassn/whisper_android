@@ -25,7 +25,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements UpdateListener {
 
     private final String TAG = "MainActivity";
 
@@ -163,7 +163,8 @@ public class MainActivity extends AppCompatActivity {
         //mTranscriptionThread.join();
     }
 
-    public void updateUIStatus(final String message) {
+    @Override
+    public void updateStatus(final String message) {
         mHandler.post(() -> tvResult.setText(message));
 
         if(message.equals(getString(R.string.recording_is_completed)))

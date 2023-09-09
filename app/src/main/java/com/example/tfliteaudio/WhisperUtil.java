@@ -1,20 +1,20 @@
 package com.example.tfliteaudio;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.HashMap;
-import java.util.Map;
-
 import static java.lang.Math.cos;
 import static java.lang.Math.log10;
 import static java.lang.Math.sin;
 
-import android.util.Log;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 public class WhisperUtil {
 
     private static final String TAG = "WhisperUtil";
+
+    // Vocab types
+    public static int N_VOCAB_ENGLISH = 51864;       // for english only vocab
+    public static int N_VOCAB_MULTILINGUAL = 51865;  // for multilingual vocab
 
     public static final int WHISPER_SAMPLE_RATE = 16000;
     public static final int WHISPER_N_FFT = 400;
@@ -46,24 +46,6 @@ public class WhisperUtil {
         public int tokenTranscribe = 50359;
 
         public Map<Integer, String> tokenToWord = new HashMap<>();
-
-        // Vocab types
-        public int nVocabMultilingual = 51865;    // for multilingual vocab
-        public int nVocabNonMultilingual = 51864; // for non multilingual vocab
-
-        // Initialise nVocab as default types
-        public int nVocab = nVocabMultilingual;
-
-        public void setMultilingual(boolean multilingual) {
-            if (multilingual)
-                nVocab = nVocabMultilingual;
-            else
-                nVocab = nVocabNonMultilingual;
-        }
-
-        public boolean isMultilingual() {
-            return nVocab == nVocabMultilingual;
-        }
     }
 
     public static class WhisperFilter {
@@ -100,24 +82,30 @@ public class WhisperUtil {
 
         int nFft = 1 + fftSize / 2;
 
-        // Create a list to hold the threads
-        List<Thread> workers = new ArrayList<>();
+/////////////// UNCOMMENT below block to use multithreaded mel calculation /////////////////////////
+//        // Calculate mel values using multiple threads
+//        List<Thread> workers = new ArrayList<>();
+//        for (int iw = 0; iw < nThreads; iw++) {
+//            final int ith = iw;  // Capture iw in a final variable for use in the lambda
+//            Thread thread = new Thread(() -> {
+//                // Inside the thread, ith will have the same value as iw (first value is 0)
+//                Log.d(TAG, "Thread " + ith + " started.");
+//
+//                float[] fftIn = new float[fftSize];
+//                Arrays.fill(fftIn, 0.0f);
+//                float[] fftOut = new float[fftSize * 2];
+//
+//                for (int i = ith; i < mel.nLen; i += nThreads) {
+/////////////// END of Block ///////////////////////////////////////////////////////////////////////
 
-        // Create and start the threads
-        for (int iw = 0; iw < nThreads; iw++) {
-            final int ith = iw;  // Capture iw in a final variable for use in the lambda
-            Thread thread = new Thread(() -> {
-                // Inside the thread, ith will have the same value as iw (first value is 0)
-                Log.d(TAG, "Thread " + ith + " started.");
-
+/////////////// COMMENT below block to use multithreaded mel calculation ///////////////////////////
                 float[] fftIn = new float[fftSize];
-                for (int i = 0; i < fftSize; i++) {
-                    fftIn[i] = 0.0f;
-                }
-
+                Arrays.fill(fftIn, 0.0f);
                 float[] fftOut = new float[fftSize * 2];
 
-                for (int i = ith; i < mel.nLen; i += nThreads) {
+                for (int i = 0; i < mel.nLen; i++) {
+/////////////// END of Block ///////////////////////////////////////////////////////////////////////
+
                     int offset = i * fftStep;
 
                     // apply Hanning window
@@ -154,20 +142,22 @@ public class WhisperUtil {
                         mel.data[j * mel.nLen + i] = (float) sum;
                     }
                 }
-            });
 
-            workers.add(thread);
-            thread.start();
-        }
-
-        // Wait for all threads to finish
-        for (Thread worker : workers) {
-            try {
-                worker.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
+/////////////// UNCOMMENT below block to use multithreaded mel calculation /////////////////////////
+//            });
+//            workers.add(thread);
+//            thread.start();
+//        }
+//
+//        // Wait for all threads to finish
+//        for (Thread worker : workers) {
+//            try {
+//                worker.join();
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        }
+/////////////// END of Block ///////////////////////////////////////////////////////////////////////
 
         // clamping and normalization
         double mmax = -1e20;

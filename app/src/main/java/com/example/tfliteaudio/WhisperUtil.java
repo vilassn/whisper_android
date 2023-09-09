@@ -1,5 +1,7 @@
 package com.example.tfliteaudio;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.HashMap;
 import java.util.Map;
@@ -7,6 +9,8 @@ import java.util.Map;
 import static java.lang.Math.cos;
 import static java.lang.Math.log10;
 import static java.lang.Math.sin;
+
+import android.util.Log;
 
 public class WhisperUtil {
 
@@ -22,8 +26,6 @@ public class WhisperUtil {
             50257, 50362, 1770, 13, 2264, 346, 353, 318,
             262, 46329, 286, 262, 3504, 6097, 11, 290, 356, 389, 9675, 284, 7062
     };
-
-    private static final AtomicInteger threadCounter = new AtomicInteger(0);
 
     WhisperVocab vocab = new WhisperVocab();
     WhisperFilter filters = new WhisperFilter();
@@ -81,7 +83,7 @@ public class WhisperUtil {
         return vocab.tokenToWord.get(token);
     }
 
-    // nSamples => WHISPER_SAMPLE_RATE * WHISPER_CHUNK_SIZE => 480000
+    // nSamples size => WHISPER_SAMPLE_RATE * WHISPER_CHUNK_SIZE => 480000
     public static boolean getMelSpectrogram(
             float[] samples, int nSamples, int sampleRate,
             int fftSize, int fftStep, int nMel, int nThreads,
@@ -97,18 +99,25 @@ public class WhisperUtil {
         }
 
         int nFft = 1 + fftSize / 2;
-        Thread[] workers = new Thread[nThreads];
+
+        // Create a list to hold the threads
+        List<Thread> workers = new ArrayList<>();
+
+        // Create and start the threads
         for (int iw = 0; iw < nThreads; iw++) {
-            final int ith = threadCounter.incrementAndGet();
-            workers[iw] = new Thread(() -> {
+            final int ith = iw;  // Capture iw in a final variable for use in the lambda
+            Thread thread = new Thread(() -> {
+                // Inside the thread, ith will have the same value as iw (first value is 0)
+                Log.d(TAG, "Thread " + ith + " started.");
+
                 float[] fftIn = new float[fftSize];
                 for (int i = 0; i < fftSize; i++) {
                     fftIn[i] = 0.0f;
                 }
 
                 float[] fftOut = new float[fftSize * 2];
-                int i = ith;
-                while (i < mel.nLen) {
+
+                for (int i = ith; i < mel.nLen; i += nThreads) {
                     int offset = i * fftStep;
 
                     // apply Hanning window
@@ -144,15 +153,17 @@ public class WhisperUtil {
                         sum = log10(sum);
                         mel.data[j * mel.nLen + i] = (float) sum;
                     }
-                    i += nThreads;
                 }
             });
-            workers[iw].start();
+
+            workers.add(thread);
+            thread.start();
         }
 
-        for (int iw = 0; iw < nThreads; iw++) {
+        // Wait for all threads to finish
+        for (Thread worker : workers) {
             try {
-                workers[iw].join();
+                worker.join();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

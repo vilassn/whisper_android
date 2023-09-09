@@ -1,7 +1,6 @@
 package com.example.tfliteaudio;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
@@ -16,10 +15,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class RecordingThread extends Thread {
     private final String TAG = "RecordingThread";
-    private final Context mContext;
+    private final MainActivity mContext;
     private static final AtomicBoolean mRecordingInProgress = new AtomicBoolean(false);
 
-    public RecordingThread(Context context) {
+    public RecordingThread(MainActivity context) {
         mContext = context;
     }
 
@@ -38,11 +37,13 @@ public class RecordingThread extends Thread {
                 return;
             }
 
+            mContext.updateUIStatus(mContext.getString(R.string.recording));
+
             int channels = 1;
             int bytesPerSample = 2;
             int sampleRateInHz = 16000;
-            int channelConfig = AudioFormat.CHANNEL_IN_MONO; // it should be as per channels
-            int audioFormat = AudioFormat.ENCODING_PCM_16BIT; // it should be as per bytesPerSample
+            int channelConfig = AudioFormat.CHANNEL_IN_MONO; // as per channels
+            int audioFormat = AudioFormat.ENCODING_PCM_16BIT; // as per bytesPerSample
             int audioSource = MediaRecorder.AudioSource.MIC;
 
             int bufferSize = AudioRecord.getMinBufferSize(sampleRateInHz, channelConfig, audioFormat);
@@ -56,8 +57,6 @@ public class RecordingThread extends Thread {
             int totalBytesRead = 0;
             byte[] buffer = new byte[bufferSize];
             while (mRecordingInProgress.get() && (totalBytesRead < bufferSize30Sec)) {
-                //mHandler.post(() -> tvResult.setText(recordMsg));
-                Log.d(TAG, "AudioRecord recording...");
                 int bytesRead = audioRecord.read(buffer, 0, bufferSize);
                 if (bytesRead > 0) {
                     byteBuffer.put(buffer, 0, bytesRead);
@@ -71,10 +70,12 @@ public class RecordingThread extends Thread {
             audioRecord.stop();
             audioRecord.release();
 
+            mRecordingInProgress.set(false);
+
             String wavePath = mContext.getFilesDir() + File.separator + WaveUtil.RECORDING_FILE;
             WaveUtil.createWaveFile(wavePath, byteBuffer.array(), sampleRateInHz, channels, bytesPerSample);
             Log.d(TAG, "Recorded file: " + wavePath);
-            //mHandler.post(() -> tvResult.setText(getString(R.string.recording_is_completed)));
+            mContext.updateUIStatus(mContext.getString(R.string.recording_is_completed));
         } catch (Exception e) {
             throw new RuntimeException("Writing of recorded audio failed", e);
         }

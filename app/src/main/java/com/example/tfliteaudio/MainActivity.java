@@ -35,7 +35,6 @@ public class MainActivity extends AppCompatActivity {
     private Handler mHandler;
     private String mSelectedFile;
     private RecordingThread mRecordingThread = null;
-
     private TranscriptionThread mTranscriptionThread = null;
 
     @Override
@@ -135,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
     private void startRecording() {
         checkRecordPermission();
 
-        mRecordingThread = new RecordingThread(getApplicationContext());
+        mRecordingThread = new RecordingThread(this);
         mRecordingThread.setRecordingInProgress(true);
         mRecordingThread.start();
 
@@ -144,8 +143,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void stopRecording() {
         try {
-            mRecordingThread.setRecordingInProgress(false);
-            mRecordingThread.join();
+            if (mRecordingThread != null) {
+                mRecordingThread.setRecordingInProgress(false);
+                mRecordingThread.join();
+                mRecordingThread = null;
+            }
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -154,15 +156,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startTranscription() {
-        try {
-            mTranscriptionThread = new TranscriptionThread(getApplicationContext());
-            mTranscriptionThread.setInputFile(mSelectedFile);
-            mTranscriptionThread.start();
-            mTranscriptionThread.setTranscriptionInProgress(true);
-            mTranscriptionThread.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        mTranscriptionThread = new TranscriptionThread(this);
+        mTranscriptionThread.setInputFile(mSelectedFile);
+        mTranscriptionThread.start();
+        mTranscriptionThread.setTranscriptionInProgress(true);
+        //mTranscriptionThread.join();
+    }
+
+    public void updateUIStatus(final String message) {
+        mHandler.post(() -> tvResult.setText(message));
+
+        if(message.equals(getString(R.string.recording_is_completed)))
+            mHandler.post(() -> btnMicRec.setText(getString(R.string.record)));
     }
 
     public static void copyAssetsWithExtensionsToDataFolder(Context context, String[] extensions) {

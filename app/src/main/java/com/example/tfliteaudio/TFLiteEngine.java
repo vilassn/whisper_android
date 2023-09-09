@@ -2,8 +2,6 @@ package com.example.tfliteaudio;
 
 import android.util.Log;
 
-import com.jlibrosa.audio.JLibrosa;
-
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.Tensor;
@@ -46,6 +44,7 @@ public class TFLiteEngine {
     public String getTranscription(String wavePath) {
 
         // Calculate Mel spectrogram
+        Log.d(TAG, "Calculating Mel spectrogram...");
         float[] melSpectrogram = getMelSpectrogram(wavePath);
         Log.d(TAG, "Mel spectrogram is calculated...!");
 
@@ -152,33 +151,16 @@ public class TFLiteEngine {
     }
 
     private float[] getMelSpectrogram(String wavePath) {
-        float[] meanValues = new float[0];
-        try {
-            if (wavePath.endsWith(WaveUtil.RECORDING_FILE)) {
-//                JLibrosa jLibrosa = new JLibrosa();
-//                meanValues = jLibrosa.loadAndRead(wavePath, -1, -1);
-//                Log.d(TAG, "Number of samples in audio file (" + wavePath + "): " + meanValues.length);
-                meanValues = WaveUtil.readWaveFile(wavePath);
-                Log.d(TAG, "using WaveUtil.readWaveFile");
-            } else {
-                meanValues = WaveUtil.readAudioFile(wavePath);
-                Log.d(TAG, "using WaveUtil.readAudioFile");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        // Get samples in PCM_FLOAT format
+        float[] samples = WaveUtil.getSamples(wavePath);
 
-        float[] samples = new float[WhisperUtil.WHISPER_SAMPLE_RATE * WhisperUtil.WHISPER_CHUNK_SIZE];
-        //System.arraycopy(originalArray, 0, largerArray, 0, originalArray.length);
-        for (int i = 0; i < samples.length; i++) {
-            if (i < meanValues.length)
-                samples[i] = meanValues[i];
-            else
-                samples[i] = 0.0f;
-        }
+        int fixedInputSize = WhisperUtil.WHISPER_SAMPLE_RATE * WhisperUtil.WHISPER_CHUNK_SIZE;
+        float[] inputSamples = new float[fixedInputSize];
+        int copyLength = Math.min(samples.length, fixedInputSize);
+        System.arraycopy(samples, 0, inputSamples, 0, copyLength);
 
         int cores = Runtime.getRuntime().availableProcessors();
-        if (!WhisperUtil.getMelSpectrogram(samples, samples.length, WhisperUtil.WHISPER_SAMPLE_RATE,
+        if (!WhisperUtil.getMelSpectrogram(inputSamples, inputSamples.length, WhisperUtil.WHISPER_SAMPLE_RATE,
                 WhisperUtil.WHISPER_N_FFT, WhisperUtil.WHISPER_HOP_LENGTH, WhisperUtil.WHISPER_N_MEL,
                 cores, mWhisper.filters, mWhisper.mel)) {
             Log.d(TAG, "%s: failed to compute mel spectrogram");
@@ -212,7 +194,7 @@ public class TFLiteEngine {
         // To test mel data as a input directly
 //        try {
 //            byte[] bytes = Files.readAllBytes(Paths.get("/data/user/0/com.example.tfliteaudio/files/mel_spectrogram.bin"));
-//            input_buf = ByteBuffer.wrap(bytes);
+//            inputBuf = ByteBuffer.wrap(bytes);
 //        } catch (IOException e) {
 //            throw new RuntimeException(e);
 //        }

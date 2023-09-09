@@ -3,8 +3,6 @@ package com.example.tfliteaudio;
 import android.util.Log;
 
 import com.jlibrosa.audio.JLibrosa;
-import com.jlibrosa.audio.exception.FileFormatNotSupportedException;
-import com.jlibrosa.audio.wavFile.WavFileException;
 
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
@@ -15,37 +13,44 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
 public class TFLiteEngine {
 
-    private static final String TAG = "TFLiteEngine";
-
-    private Interpreter mInterpreter;
+    private final String TAG = "TFLiteEngine";
+    private boolean mIsInitialized = false;
     private final WhisperUtil mWhisper = new WhisperUtil();
+    private Interpreter mInterpreter;
 
-    public boolean initialize(String vocabPath, String modelPath) throws IOException {
+    public boolean isInitialized() {
+        return mIsInitialized;
+    }
+
+    public boolean initialize(boolean multilingual, String vocabPath, String modelPath) throws IOException {
+
         // Load model
         loadModel(modelPath);
         Log.d(TAG, "Model is loaded...!" + modelPath);
 
         // Load filters and vocab
-        loadFiltersAndVocab(vocabPath);
+        loadFiltersAndVocab(multilingual, vocabPath);
         Log.d(TAG, "Filters and Vocab are loaded...!");
+
+        mIsInitialized = true;
 
         return true;
     }
 
-    public String getTranscription(String wavePath) throws FileFormatNotSupportedException, IOException, WavFileException {
+    public String getTranscription(String wavePath) {
+
         // Calculate Mel spectrogram
-        float[] melSpectogram = getMelSpectogram(wavePath);
-        Log.d(TAG, "Mel spectogram is calculated...!");
+        float[] melSpectrogram = getMelSpectrogram(wavePath);
+        Log.d(TAG, "Mel spectrogram is calculated...!");
 
         // Perform inference
-        String result = runInference(melSpectogram);
+        String result = runInference(melSpectrogram);
         Log.d(TAG, "Inference is executed...!");
 
         return result;
@@ -57,20 +62,29 @@ public class TFLiteEngine {
         FileChannel fileChannel = fileInputStream.getChannel();
         long startOffset = 0;
         long declaredLength = fileChannel.size();
-        MappedByteBuffer tfliteModel = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
-        mInterpreter = new Interpreter(tfliteModel);
+        ByteBuffer tfliteModel = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+
+        // Set the number of threads for inference
+        Interpreter.Options options = new Interpreter.Options();
+        options.setNumThreads(Runtime.getRuntime().availableProcessors());
+
+        mInterpreter = new Interpreter(tfliteModel, options);
     }
 
-    // Load filters and vocab data from preg enerated filters_vocab_gen.bin file
-    private void loadFiltersAndVocab(String vocabPath) throws IOException {
+    // Load filters and vocab data from pre-generated filters_vocab_gen.bin file
+    private void loadFiltersAndVocab(boolean multilingual, String vocabPath) throws IOException {
+
+        // Set whether vocab is multilingual or not
+        mWhisper.vocab.setMultilingual(multilingual);
+
         // Read vocab file
         byte[] bytes = Files.readAllBytes(Paths.get(vocabPath));
-        ByteBuffer vocab_buf = ByteBuffer.wrap(bytes);
-        vocab_buf.order(ByteOrder.LITTLE_ENDIAN);
-        Log.d(TAG, "Vocab size: " + vocab_buf.limit());
+        ByteBuffer vocabBuf = ByteBuffer.wrap(bytes);
+        vocabBuf.order(ByteOrder.nativeOrder());
+        Log.d(TAG, "Vocab file size: " + vocabBuf.limit());
 
         // @magic:USEN
-        int magic = vocab_buf.getInt();
+        int magic = vocabBuf.getInt();
         if (magic == 0x5553454e) {
             Log.d(TAG, "Magic number: " + magic);
         } else {
@@ -79,99 +93,102 @@ public class TFLiteEngine {
         }
 
         // Load mel filters
-        mWhisper.filters.n_mel = vocab_buf.getInt();
-        mWhisper.filters.n_fft = vocab_buf.getInt();
-        Log.d(TAG, "n_mel:" + mWhisper.filters.n_mel + ", n_fft:" + mWhisper.filters.n_fft);
+        mWhisper.filters.nMel = vocabBuf.getInt();
+        mWhisper.filters.nFft = vocabBuf.getInt();
+        Log.d(TAG, "n_mel:" + mWhisper.filters.nMel + ", n_fft:" + mWhisper.filters.nFft);
 
-        byte[] filter_data = new byte[mWhisper.filters.n_mel * mWhisper.filters.n_fft * Float.BYTES];
-        vocab_buf.get(filter_data, 0, filter_data.length);
-        ByteBuffer filter_buf = ByteBuffer.wrap(filter_data);
-        filter_buf.order(ByteOrder.nativeOrder());
+        byte[] filterData = new byte[mWhisper.filters.nMel * mWhisper.filters.nFft * Float.BYTES];
+        vocabBuf.get(filterData, 0, filterData.length);
+        ByteBuffer filterBuf = ByteBuffer.wrap(filterData);
+        filterBuf.order(ByteOrder.nativeOrder());
 
-        mWhisper.filters.data = new float[mWhisper.filters.n_mel * mWhisper.filters.n_fft];
-        for (int i = 0; filter_buf.hasRemaining(); i++) {
-            mWhisper.filters.data[i] = filter_buf.getFloat();
+        mWhisper.filters.data = new float[mWhisper.filters.nMel * mWhisper.filters.nFft];
+        for (int i = 0; filterBuf.hasRemaining(); i++) {
+            mWhisper.filters.data[i] = filterBuf.getFloat();
         }
 
         // Load vocabulary
-        int n_vocab = vocab_buf.getInt(); // 50257
-        Log.d(TAG, "n_vocab: " + n_vocab);
-
-        mWhisper.vocab.n_vocab = n_vocab;
-        for (int i = 0; i < mWhisper.vocab.n_vocab; i++) {
-            int len = vocab_buf.getInt();
-            byte[] word_bytes = new byte[len];
-            vocab_buf.get(word_bytes, 0, word_bytes.length);
-            String word = new String(word_bytes);
-            mWhisper.vocab.id_to_token.put(i, word);
-            //Log.d(TAG, "i= " + i + ", len= " + len + ", g_vocab= " + word);
+        int nVocab = vocabBuf.getInt();
+        Log.d(TAG, "nVocab: " + nVocab);
+        for (int i = 0; i < nVocab; i++) {
+            int len = vocabBuf.getInt();
+            byte[] wordBytes = new byte[len];
+            vocabBuf.get(wordBytes, 0, wordBytes.length);
+            String word = new String(wordBytes);
+            mWhisper.vocab.tokenToWord.put(i, word);
         }
 
         // Add additional vocab ids
-        mWhisper.vocab.n_vocab = 51864;
-        if (mWhisper.vocab.is_multilingual()) {
-            mWhisper.vocab.token_eot++;
-            mWhisper.vocab.token_sot++;
-            mWhisper.vocab.token_prev++;
-            mWhisper.vocab.token_solm++;
-            mWhisper.vocab.token_not++;
-            mWhisper.vocab.token_beg++;
+        if (mWhisper.vocab.isMultilingual()) {
+            mWhisper.vocab.tokenEot++;
+            mWhisper.vocab.tokenSot++;
+            mWhisper.vocab.tokenPrev++;
+            mWhisper.vocab.tokenSolm++;
+            mWhisper.vocab.tokenNot++;
+            mWhisper.vocab.tokenBeg++;
         }
 
-        for (int i = n_vocab; i < mWhisper.vocab.n_vocab; i++) {
+        for (int i = nVocab; i < mWhisper.vocab.nVocab; i++) {
             String word;
-            if (i > mWhisper.vocab.token_beg) {
-                word = "[_TT_" + (i - mWhisper.vocab.token_beg) + "]";
-            } else if (i == mWhisper.vocab.token_eot) {
+            if (i > mWhisper.vocab.tokenBeg) {
+                word = "[_TT_" + (i - mWhisper.vocab.tokenBeg) + "]";
+            } else if (i == mWhisper.vocab.tokenEot) {
                 word = "[_EOT_]";
-            } else if (i == mWhisper.vocab.token_sot) {
+            } else if (i == mWhisper.vocab.tokenSot) {
                 word = "[_SOT_]";
-            } else if (i == mWhisper.vocab.token_prev) {
+            } else if (i == mWhisper.vocab.tokenPrev) {
                 word = "[_PREV_]";
-            } else if (i == mWhisper.vocab.token_not) {
+            } else if (i == mWhisper.vocab.tokenNot) {
                 word = "[_NOT_]";
-            } else if (i == mWhisper.vocab.token_beg) {
+            } else if (i == mWhisper.vocab.tokenBeg) {
                 word = "[_BEG_]";
             } else {
                 word = "[_extra_token_" + i + "]";
             }
 
-            mWhisper.vocab.id_to_token.put(i, word);
-            //Log.d(TAG, "i= " + i + ", g_vocab= " + word);
+            mWhisper.vocab.tokenToWord.put(i, word);
+            //Log.d(TAG, "i= " + i + ", word= " + word);
         }
     }
 
-    private float[] getMelSpectogram(String wavePath) throws IOException, FileFormatNotSupportedException, WavFileException {
-
-        float[] meanValues;
-        if (!wavePath.endsWith(MainActivity.RECORDED_FILE)) {
-            JLibrosa jLibrosa = new JLibrosa();
-            meanValues = jLibrosa.loadAndRead(wavePath, -1, -1);
-            Log.d(TAG, "Number of samples in audio file (" + wavePath + "): " + meanValues.length);
-        } else {
-            meanValues = WaveUtil.readWaveFile(wavePath);
+    private float[] getMelSpectrogram(String wavePath) {
+        float[] meanValues = new float[0];
+        try {
+            if (wavePath.endsWith(WaveUtil.RECORDING_FILE)) {
+//                JLibrosa jLibrosa = new JLibrosa();
+//                meanValues = jLibrosa.loadAndRead(wavePath, -1, -1);
+//                Log.d(TAG, "Number of samples in audio file (" + wavePath + "): " + meanValues.length);
+                meanValues = WaveUtil.readWaveFile(wavePath);
+                Log.d(TAG, "using WaveUtil.readWaveFile");
+            } else {
+                meanValues = WaveUtil.readAudioFile(wavePath);
+                Log.d(TAG, "using WaveUtil.readAudioFile");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
         float[] samples = new float[WhisperUtil.WHISPER_SAMPLE_RATE * WhisperUtil.WHISPER_CHUNK_SIZE];
+        //System.arraycopy(originalArray, 0, largerArray, 0, originalArray.length);
         for (int i = 0; i < samples.length; i++) {
             if (i < meanValues.length)
                 samples[i] = meanValues[i];
             else
-                samples[i] = 0;
+                samples[i] = 0.0f;
         }
 
-        if (!WhisperUtil.getMelSpectrogram(samples, samples.length, WhisperUtil.WHISPER_SAMPLE_RATE, WhisperUtil.WHISPER_N_FFT,
-                WhisperUtil.WHISPER_HOP_LENGTH, WhisperUtil.WHISPER_N_MEL, 8, mWhisper.filters, mWhisper.mel)) {
+        int cores = Runtime.getRuntime().availableProcessors();
+        if (!WhisperUtil.getMelSpectrogram(samples, samples.length, WhisperUtil.WHISPER_SAMPLE_RATE,
+                WhisperUtil.WHISPER_N_FFT, WhisperUtil.WHISPER_HOP_LENGTH, WhisperUtil.WHISPER_N_MEL,
+                cores, mWhisper.filters, mWhisper.mel)) {
             Log.d(TAG, "%s: failed to compute mel spectrogram");
             return null;
         }
 
-        Log.d(TAG, "mWhisper.mel.n_mel: " + mWhisper.mel.n_mel + ", mWhisper.mel.n_len: " + mWhisper.mel.n_len);
         return mWhisper.mel.data;
     }
 
     private String runInference(float[] inputData) {
-
         // Create input tensor
         Tensor inputTensor = mInterpreter.getInputTensor(0);
         TensorBuffer inputBuffer = TensorBuffer.createFixedSize(inputTensor.shape(), inputTensor.dataType());
@@ -185,11 +202,11 @@ public class TFLiteEngine {
         printTensorDump(outputTensor);
 
         // Load input data
-        int input_size = inputTensor.shape()[0] * inputTensor.shape()[1] * inputTensor.shape()[2] * Float.BYTES;
-        ByteBuffer input_buf = ByteBuffer.allocateDirect(input_size);
-        input_buf.order(ByteOrder.nativeOrder());
+        int inputSize = inputTensor.shape()[0] * inputTensor.shape()[1] * inputTensor.shape()[2] * Float.BYTES;
+        ByteBuffer inputBuf = ByteBuffer.allocateDirect(inputSize);
+        inputBuf.order(ByteOrder.nativeOrder());
         for (float input : inputData) {
-            input_buf.putFloat(input);
+            inputBuf.putFloat(input);
         }
 
         // To test mel data as a input directly
@@ -200,22 +217,35 @@ public class TFLiteEngine {
 //            throw new RuntimeException(e);
 //        }
 
-        inputBuffer.loadBuffer(input_buf);
+        inputBuffer.loadBuffer(inputBuf);
 
         // Run inference
         mInterpreter.run(inputBuffer.getBuffer(), outputBuffer.getBuffer());
 
         // Retrieve the results
-        int output_len = outputBuffer.getIntArray().length;
-        Log.d(TAG, "output_len: " + output_len);
+        int outputLen = outputBuffer.getIntArray().length;
+        Log.d(TAG, "output_len: " + outputLen);
         StringBuilder result = new StringBuilder();
-        for (int i = 0; i < output_len; i++) {
+        for (int i = 0; i < outputLen; i++) {
             int token = outputBuffer.getBuffer().getInt();
-            if (token == mWhisper.vocab.token_eot)
+            if (token == mWhisper.vocab.tokenEot)
                 break;
 
-            if ((token != 50257) && (token != 50362))
-                result.append(mWhisper.getStringFromToken(token));
+            // Get word for token and Skip additional token
+            if (token < mWhisper.vocab.tokenEot) {
+                String word = mWhisper.getWordFromToken(token);
+                Log.d(TAG, "Adding token: " + token + ", word: " + word);
+                result.append(word);
+            } else {
+                if (token == mWhisper.vocab.tokenTranscribe)
+                    Log.d(TAG, "It is Transcription...");
+
+                if (token == mWhisper.vocab.tokenTranslate)
+                    Log.d(TAG, "It is Translation...");
+
+                String word = mWhisper.getWordFromToken(token);
+                Log.d(TAG, "Skipping token: " + token + ", word: " + word);
+            }
         }
 
         return result.toString();

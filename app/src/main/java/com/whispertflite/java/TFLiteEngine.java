@@ -2,6 +2,10 @@ package com.whispertflite.java;
 
 import android.util.Log;
 
+import com.whispertflite.common.ITFLiteEngine;
+import com.whispertflite.common.WaveUtil;
+import com.whispertflite.common.WhisperUtil;
+
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.Tensor;
@@ -15,19 +19,19 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-public class TFLiteEngine {
-
+public class TFLiteEngine implements ITFLiteEngine {
     private final String TAG = "TFLiteEngine";
     private boolean mIsInitialized = false;
     private final WhisperUtil mWhisper = new WhisperUtil();
     private Interpreter mInterpreter;
 
+    @Override
     public boolean isInitialized() {
         return mIsInitialized;
     }
 
+    @Override
     public boolean initialize(boolean multilingual, String vocabPath, String modelPath) throws IOException {
-
         // Load model
         loadModel(modelPath);
         Log.d(TAG, "Model is loaded...!" + modelPath);
@@ -41,8 +45,8 @@ public class TFLiteEngine {
         return true;
     }
 
+    @Override
     public String getTranscription(String wavePath) {
-
         // Calculate Mel spectrogram
         Log.d(TAG, "Calculating Mel spectrogram...");
         float[] melSpectrogram = getMelSpectrogram(wavePath);
@@ -120,27 +124,27 @@ public class TFLiteEngine {
             mVocabAdditional = WhisperUtil.N_VOCAB_ENGLISH;
         } else {
             mVocabAdditional = WhisperUtil.N_VOCAB_MULTILINGUAL;
-            mWhisper.vocab.tokenEot++;
-            mWhisper.vocab.tokenSot++;
-            mWhisper.vocab.tokenPrev++;
-            mWhisper.vocab.tokenSolm++;
-            mWhisper.vocab.tokenNot++;
-            mWhisper.vocab.tokenBeg++;
+            WhisperUtil.TOKEN_EOT++;
+            WhisperUtil.TOKEN_SOT++;
+            WhisperUtil.TOKEN_PREV++;
+            WhisperUtil.TOKEN_SOLM++;
+            WhisperUtil.TOKEN_NOT++;
+            WhisperUtil.TOKEN_BEG++;
         }
 
         for (int i = nVocab; i < mVocabAdditional; i++) {
             String word;
-            if (i > mWhisper.vocab.tokenBeg) {
-                word = "[_TT_" + (i - mWhisper.vocab.tokenBeg) + "]";
-            } else if (i == mWhisper.vocab.tokenEot) {
+            if (i > WhisperUtil.TOKEN_BEG) {
+                word = "[_TT_" + (i - WhisperUtil.TOKEN_BEG) + "]";
+            } else if (i == WhisperUtil.TOKEN_EOT) {
                 word = "[_EOT_]";
-            } else if (i == mWhisper.vocab.tokenSot) {
+            } else if (i == WhisperUtil.TOKEN_SOT) {
                 word = "[_SOT_]";
-            } else if (i == mWhisper.vocab.tokenPrev) {
+            } else if (i == WhisperUtil.TOKEN_PREV) {
                 word = "[_PREV_]";
-            } else if (i == mWhisper.vocab.tokenNot) {
+            } else if (i == WhisperUtil.TOKEN_NOT) {
                 word = "[_NOT_]";
-            } else if (i == mWhisper.vocab.tokenBeg) {
+            } else if (i == WhisperUtil.TOKEN_BEG) {
                 word = "[_BEG_]";
             } else {
                 word = "[_extra_token_" + i + "]";
@@ -211,19 +215,19 @@ public class TFLiteEngine {
         StringBuilder result = new StringBuilder();
         for (int i = 0; i < outputLen; i++) {
             int token = outputBuffer.getBuffer().getInt();
-            if (token == mWhisper.vocab.tokenEot)
+            if (token == WhisperUtil.TOKEN_EOT)
                 break;
 
             // Get word for token and Skip additional token
-            if (token < mWhisper.vocab.tokenEot) {
+            if (token < WhisperUtil.TOKEN_EOT) {
                 String word = mWhisper.getWordFromToken(token);
                 Log.d(TAG, "Adding token: " + token + ", word: " + word);
                 result.append(word);
             } else {
-                if (token == mWhisper.vocab.tokenTranscribe)
+                if (token == WhisperUtil.TASK_TRANSCRIBE)
                     Log.d(TAG, "It is Transcription...");
 
-                if (token == mWhisper.vocab.tokenTranslate)
+                if (token == WhisperUtil.TASK_TRANSLATE)
                     Log.d(TAG, "It is Translation...");
 
                 String word = mWhisper.getWordFromToken(token);

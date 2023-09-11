@@ -1,4 +1,4 @@
-package com.whispertflite.java;
+package com.whispertflite.common;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;

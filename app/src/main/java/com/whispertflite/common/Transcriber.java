@@ -1,43 +1,43 @@
-package com.whispertflite.java;
+package com.whispertflite.common;
 
 import android.content.Context;
 import android.util.Log;
 
 import com.whispertflite.R;
-import com.whispertflite.common.UpdateListener;
 
 import java.io.File;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class TranscriptionThread extends Thread {
-    private final String TAG = "TranscriptionThread";
-    private final Context mContext;
-    private final UpdateListener mUpdateListener;
+public class Transcriber extends Thread {
+    private final String TAG = "Transcriber";
     private String mInputWavFile;
-    private final TFLiteEngine mTFLiteEngine = new TFLiteEngine();
+    private Context mContext = null;
+    private IUpdateListener mUpdateListener = null;
+
+//    private final ITFLiteEngine mTFLiteEngine = new com.whispertflite.java.TFLiteEngine();
+    private final ITFLiteEngine mTFLiteEngine = new com.whispertflite.cpp.TFLiteEngine();
+//    private final ITFLiteEngine mTFLiteEngine = new com.whispertflite.translate.TFLiteEngine();
     private static final AtomicBoolean mTranscriptionInProgress = new AtomicBoolean(false);
 
-    public TranscriptionThread(MainActivity mainActivity) {
-        mContext = mainActivity;
-        mUpdateListener = mainActivity;
+    public Transcriber(Context context, String inputWavFile) {
+        mContext = context;
+        mInputWavFile = inputWavFile;
     }
 
-    public void setTranscriptionInProgress(boolean value) {
-        mTranscriptionInProgress.set(value);
+    public void setUpdateListener(IUpdateListener listener) {
+        mUpdateListener = listener;
+
     }
 
     public static boolean isTranscriptionInProgress() {
         return mTranscriptionInProgress.get();
     }
 
-    public void setInputFile(String inputWavFile) {
-        mInputWavFile = inputWavFile;
-    }
-
     @Override
     public void run() {
-        String TAG = "TranscriptionThread";
         try {
+            mTranscriptionInProgress.set(true);
+
             // Initialize TFLiteEngine
             if (!mTFLiteEngine.isInitialized()) {
                 // Update progress to UI thread

@@ -1,4 +1,4 @@
-package com.whispertflite.java;
+package com.whispertflite.common;
 
 import android.Manifest;
 import android.content.Context;
@@ -11,29 +11,31 @@ import android.util.Log;
 import androidx.core.app.ActivityCompat;
 
 import com.whispertflite.R;
-import com.whispertflite.common.UpdateListener;
 
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class RecordingThread extends Thread {
-    private final String TAG = "RecordingThread";
-    private final Context mContext;
-    private final UpdateListener mUpdateListener;
+public class Recorder extends Thread {
+    private final String TAG = "Recorder";
+    private Context mContext = null;
+    private IUpdateListener mUpdateListener = null;
     private static final AtomicBoolean mRecordingInProgress = new AtomicBoolean(false);
 
-    public RecordingThread(MainActivity mainActivity) {
-        mContext = mainActivity;
-        mUpdateListener = mainActivity;
+    public Recorder(Context context) {
+        mContext = context;
     }
 
-    public void setRecordingInProgress(boolean value) {
-        mRecordingInProgress.set(value);
+    public void setUpdateListener(IUpdateListener listener) {
+        mUpdateListener = listener;
     }
 
     public static boolean isRecordingInProgress() {
         return mRecordingInProgress.get();
+    }
+
+    public void stopRecording() {
+        mRecordingInProgress.set(false);
     }
 
     @Override
@@ -43,6 +45,7 @@ public class RecordingThread extends Thread {
                 return;
             }
 
+            mRecordingInProgress.set(true);
             mUpdateListener.updateStatus(mContext.getString(R.string.recording));
 
             int channels = 1;
@@ -76,14 +79,14 @@ public class RecordingThread extends Thread {
             audioRecord.stop();
             audioRecord.release();
 
-            mRecordingInProgress.set(false);
-
             String wavePath = mContext.getFilesDir() + File.separator + WaveUtil.RECORDING_FILE;
             WaveUtil.createWaveFile(wavePath, byteBuffer.array(), sampleRateInHz, channels, bytesPerSample);
             Log.d(TAG, "Recorded file: " + wavePath);
             mUpdateListener.updateStatus(mContext.getString(R.string.recording_is_completed));
         } catch (Exception e) {
             throw new RuntimeException("Writing of recorded audio failed", e);
+        } finally {
+            mRecordingInProgress.set(false);
         }
     }
 }

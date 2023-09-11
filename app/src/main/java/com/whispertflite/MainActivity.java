@@ -1,4 +1,4 @@
-package com.whispertflite.java;
+package com.whispertflite;
 
 import android.Manifest;
 import android.content.Context;
@@ -18,8 +18,10 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
-import com.whispertflite.R;
-import com.whispertflite.common.UpdateListener;
+import com.whispertflite.common.Recorder;
+import com.whispertflite.common.Transcriber;
+import com.whispertflite.common.IUpdateListener;
+import com.whispertflite.common.WaveUtil;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -28,7 +30,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity implements UpdateListener {
+public class MainActivity extends AppCompatActivity implements IUpdateListener {
 
     private final String TAG = "MainActivity";
 
@@ -37,25 +39,25 @@ public class MainActivity extends AppCompatActivity implements UpdateListener {
     private TextView tvResult;
     private Handler mHandler;
     private String mSelectedFile;
-    private RecordingThread mRecordingThread = null;
-    private TranscriptionThread mTranscriptionThread = null;
+    private Recorder mRecorder = null;
+    private Transcriber mTranscriber = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.activity_main_java);
+        setContentView(R.layout.activity_main);
         mHandler = new Handler(Looper.getMainLooper());
         tvResult = findViewById(R.id.tvResult);
 
         // Implementation of transcribe button functionality
         btnTranscb = findViewById(R.id.btnTranscb);
         btnTranscb.setOnClickListener(v -> {
-            if (RecordingThread.isRecordingInProgress()) {
+            if (Recorder.isRecordingInProgress()) {
                 stopRecording();
             }
 
-            if (!TranscriptionThread.isTranscriptionInProgress()) {
+            if (!Transcriber.isTranscriptionInProgress()) {
                 startTranscription();
             } else {
                 Log.d(TAG, "Transcription is already in progress...!");
@@ -65,7 +67,7 @@ public class MainActivity extends AppCompatActivity implements UpdateListener {
         // Implementation of record button functionality
         btnMicRec = findViewById(R.id.btnMicRecord);
         btnMicRec.setOnClickListener(v -> {
-            if (!RecordingThread.isRecordingInProgress()) {
+            if (!Recorder.isRecordingInProgress()) {
                 startRecording();
             } else {
                 stopRecording();
@@ -137,19 +139,19 @@ public class MainActivity extends AppCompatActivity implements UpdateListener {
     private void startRecording() {
         checkRecordPermission();
 
-        mRecordingThread = new RecordingThread(this);
-        mRecordingThread.setRecordingInProgress(true);
-        mRecordingThread.start();
+        mRecorder = new Recorder(this);
+        mRecorder.setUpdateListener(this);
+        mRecorder.start();
 
         mHandler.post(() -> btnMicRec.setText(getString(R.string.stop)));
     }
 
     private void stopRecording() {
         try {
-            if (mRecordingThread != null) {
-                mRecordingThread.setRecordingInProgress(false);
-                mRecordingThread.join();
-                mRecordingThread = null;
+            if (mRecorder != null) {
+                mRecorder.stopRecording();
+                mRecorder.join();
+                mRecorder = null;
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -159,11 +161,9 @@ public class MainActivity extends AppCompatActivity implements UpdateListener {
     }
 
     private void startTranscription() {
-        mTranscriptionThread = new TranscriptionThread(this);
-        mTranscriptionThread.setInputFile(mSelectedFile);
-        mTranscriptionThread.start();
-        mTranscriptionThread.setTranscriptionInProgress(true);
-        //mTranscriptionThread.join();
+        mTranscriber = new Transcriber(this, mSelectedFile);
+        mTranscriber.setUpdateListener(this);
+        mTranscriber.start();
     }
 
     @Override

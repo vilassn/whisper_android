@@ -15,11 +15,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.TFLiteAudio"
         tools:targetApi="31">
-        <activity android:name="com.whispertflite.java.MainActivity" android:exported="true">
+        <activity android:name="com.whispertflite.MainActivity" android:exported="true">
 <!--        <activity android:name="com.whispertflite.kotlin.MainActivityOne" android:exported="true">-->
 <!--        <activity android:name="com.whispertflite.kotlin.MainActivityTwo" android:exported="true">-->
-<!--        <activity android:name="com.whispertflite.cpp.TFLiteActivity" android:exported="true">-->
-<!--        <activity android:name="com.whispertflite.cpp.OboeActivity" android:exported="true">-->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

@@ -1,52 +1,61 @@
 package com.whispertflite.cpp;
 
-public class TFLiteEngine {
+import com.whispertflite.common.ITFLiteEngine;
 
-        static {
-            System.loadLibrary("audioEngine");
-        }
+public class TFLiteEngine implements ITFLiteEngine {
+    private boolean mIsInitialized = false;
+    private final long nativePtr; // Native pointer to the TFLiteEngine instance
 
-        // Native methods
-        private native long createTFLiteEngine();
-        private native int loadModel(long nativePtr, String modelPath, boolean isMultilingual);
-        private native void freeModel(long nativePtr);
-        private native String transcribeBuffer(long nativePtr, float[] samples);
-        private native String transcribeFile(long nativePtr, String waveFile);
+    public TFLiteEngine() {
+        nativePtr = createTFLiteEngine();
+    }
 
-        // Native pointer to the TFLiteEngine instance
-        private long nativePtr;
+    @Override
+    public boolean initialize(boolean multilingual, String vocabPath, String modelPath) {
+        int ret = loadModel(modelPath, multilingual);
+        mIsInitialized = true;
+        return mIsInitialized;
+    }
 
-        public TFLiteEngine() {
-            nativePtr = createTFLiteEngine();
-        }
+    @Override
+    public String getTranscription(String wavePath) {
+        return transcribeFile(wavePath);
+    }
 
-        public int loadModel(String modelPath, boolean isMultilingual) {
-            return loadModel(nativePtr, modelPath, isMultilingual);
-        }
+    @Override
+    public boolean isInitialized() {
+        return mIsInitialized;
+    }
 
-        public void freeModel() {
-            freeModel(nativePtr);
-        }
 
-        public String transcribeBuffer(float[] samples) {
-            return transcribeBuffer(nativePtr, samples);
-        }
+    static {
+        System.loadLibrary("audioEngine");
+    }
 
-        public String transcribeFile(String waveFile) {
-            return transcribeFile(nativePtr, waveFile);
-        }
+    // Native methods
+    private native long createTFLiteEngine();
 
-//        public static void main(String[] args) {
-//            // Usage example
-//            TFLiteEngine engine = new TFLiteEngine();
-//            int result = engine.loadModel("model.tflite", true);
-//            if (result == 0) {
-//                float[] samples = /* Your audio samples */;
-//                String transcription = engine.transcribeBuffer(samples);
-//                System.out.println("Transcription: " + transcription);
-//                engine.freeModel();
-//            } else {
-//                System.err.println("Failed to load model.");
-//            }
-//        }
+    private native int loadModel(long nativePtr, String modelPath, boolean isMultilingual);
+
+    private native void freeModel(long nativePtr);
+
+    private native String transcribeBuffer(long nativePtr, float[] samples);
+
+    private native String transcribeFile(long nativePtr, String waveFile);
+
+    private int loadModel(String modelPath, boolean isMultilingual) {
+        return loadModel(nativePtr, modelPath, isMultilingual);
+    }
+
+    public String transcribeBuffer(float[] samples) {
+        return transcribeBuffer(nativePtr, samples);
+    }
+
+    public String transcribeFile(String waveFile) {
+        return transcribeFile(nativePtr, waveFile);
+    }
+
+    public void freeModel() {
+        freeModel(nativePtr);
+    }
 }

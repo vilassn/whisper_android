@@ -8,7 +8,7 @@ set(INCLUDE_DIRS
         ${CMAKE_CURRENT_LIST_DIR}/tf-lite-api/include/flatbuffers/include
         )
 
-# On Android, set the output library path to jniLibs directory
+# # Check if the build is Android
 if (ANDROID)
     add_library(audioEngine SHARED TFLiteEngine.cpp TFLiteEngineJNI.cpp)
     target_include_directories(audioEngine PRIVATE ${INCLUDE_DIRS})

@@ -1,9 +1,10 @@
-package com.whispertflite.java;
+package com.whispertflite.common;
 
 import static java.lang.Math.cos;
 import static java.lang.Math.log10;
 import static java.lang.Math.sin;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,9 +13,21 @@ public class WhisperUtil {
 
     private static final String TAG = "WhisperUtil";
 
+    // Token types
+    public static int TOKEN_EOT = 50256; // end of transcript
+    public static int TOKEN_SOT = 50257; // start of transcript
+    public static int TOKEN_PREV = 50360;
+    public static int TOKEN_SOLM = 50361; // ??
+    public static int TOKEN_NOT = 50362; // no timestamps
+    public static int TOKEN_BEG = 50363;
+
     // Vocab types
-    public static int N_VOCAB_ENGLISH = 51864;       // for english only vocab
-    public static int N_VOCAB_MULTILINGUAL = 51865;  // for multilingual vocab
+    public static final int N_VOCAB_ENGLISH = 51864;       // for english only vocab
+    public static final int N_VOCAB_MULTILINGUAL = 51865;  // for multilingual vocab
+
+    // Available tasks
+    public static final int TASK_TRANSLATE = 50358;
+    public static final int TASK_TRANSCRIBE = 50359;
 
     public static final int WHISPER_SAMPLE_RATE = 16000;
     public static final int WHISPER_N_FFT = 400;
@@ -22,29 +35,18 @@ public class WhisperUtil {
     public static final int WHISPER_HOP_LENGTH = 160;
     public static final int WHISPER_CHUNK_SIZE = 30;
     public static final int WHISPER_MEL_LEN = 3000;
+
     public static final int[] golden_generated_ids = {
             50257, 50362, 1770, 13, 2264, 346, 353, 318,
             262, 46329, 286, 262, 3504, 6097, 11, 290, 356, 389, 9675, 284, 7062
     };
 
-    WhisperVocab vocab = new WhisperVocab();
-    WhisperFilter filters = new WhisperFilter();
-    WhisperMel mel = new WhisperMel();
+    public WhisperVocab vocab = new WhisperVocab();
+    public WhisperFilter filters = new WhisperFilter();
+    public WhisperMel mel = new WhisperMel();
 
     // Helper class definitions
     public static class WhisperVocab {
-        // Token types
-        public int tokenEot = 50256; // end of transcript
-        public int tokenSot = 50257; // start of transcript
-        public int tokenPrev = 50360;
-        public int tokenSolm = 50361; // ??
-        public int tokenNot = 50362; // no timestamps
-        public int tokenBeg = 50363;
-
-        // Available tasks
-        public int tokenTranslate = 50358;
-        public int tokenTranscribe = 50359;
-
         public Map<Integer, String> tokenToWord = new HashMap<>();
     }
 
@@ -58,6 +60,28 @@ public class WhisperUtil {
         public int nLen = 0;
         public int nMel = 0;
         public float[] data;
+    }
+
+    public static class InputLang {
+        public String name;
+        public String code;
+        public long id;
+
+        public InputLang(String name, String code, long id) {
+            this.name = name;
+            this.code = code;
+            this.id = id;
+        }
+
+        // Initialize the list of input language objects
+        public ArrayList<InputLang> getLangList() {
+            ArrayList<InputLang> inputLangList = new ArrayList<>();
+            inputLangList.add(new InputLang("English", "en", 50259));
+            inputLangList.add(new InputLang("Spanish", "es", 50262));
+            inputLangList.add(new InputLang("Hindi", "hi", 50276));
+            inputLangList.add(new InputLang("Telugu", "te", 50299));
+            return inputLangList;
+        }
     }
 
     // Helper functions definitions

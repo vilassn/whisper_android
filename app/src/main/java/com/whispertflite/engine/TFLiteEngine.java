@@ -1,4 +1,4 @@
-package com.whispertflite.java;
+package com.whispertflite.engine;
 
 import android.util.Log;
 
@@ -16,14 +16,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 public class TFLiteEngine implements ITFLiteEngine {
     private final String TAG = "TFLiteEngine";
     private boolean mIsInitialized = false;
+    private Interpreter mInterpreter = null;
     private final WhisperUtil mWhisper = new WhisperUtil();
-    private Interpreter mInterpreter;
 
     @Override
     public boolean isInitialized() {
@@ -37,7 +35,7 @@ public class TFLiteEngine implements ITFLiteEngine {
         Log.d(TAG, "Model is loaded...!" + modelPath);
 
         // Load filters and vocab
-        loadFiltersAndVocab(multilingual, vocabPath);
+        mWhisper.loadFiltersAndVocab(multilingual, vocabPath);
         Log.d(TAG, "Filters and Vocab are loaded...!");
 
         mIsInitialized = true;
@@ -74,87 +72,6 @@ public class TFLiteEngine implements ITFLiteEngine {
         mInterpreter = new Interpreter(tfliteModel, options);
     }
 
-    // Load filters and vocab data from pre-generated filters_vocab_gen.bin file
-    private void loadFiltersAndVocab(boolean multilingual, String vocabPath) throws IOException {
-
-        // Read vocab file
-        byte[] bytes = Files.readAllBytes(Paths.get(vocabPath));
-        ByteBuffer vocabBuf = ByteBuffer.wrap(bytes);
-        vocabBuf.order(ByteOrder.nativeOrder());
-        Log.d(TAG, "Vocab file size: " + vocabBuf.limit());
-
-        // @magic:USEN
-        int magic = vocabBuf.getInt();
-        if (magic == 0x5553454e) {
-            Log.d(TAG, "Magic number: " + magic);
-        } else {
-            Log.d(TAG, "Invalid vocab file (bad magic: " + magic + "), " + vocabPath);
-            return;
-        }
-
-        // Load mel filters
-        mWhisper.filters.nMel = vocabBuf.getInt();
-        mWhisper.filters.nFft = vocabBuf.getInt();
-        Log.d(TAG, "n_mel:" + mWhisper.filters.nMel + ", n_fft:" + mWhisper.filters.nFft);
-
-        byte[] filterData = new byte[mWhisper.filters.nMel * mWhisper.filters.nFft * Float.BYTES];
-        vocabBuf.get(filterData, 0, filterData.length);
-        ByteBuffer filterBuf = ByteBuffer.wrap(filterData);
-        filterBuf.order(ByteOrder.nativeOrder());
-
-        mWhisper.filters.data = new float[mWhisper.filters.nMel * mWhisper.filters.nFft];
-        for (int i = 0; filterBuf.hasRemaining(); i++) {
-            mWhisper.filters.data[i] = filterBuf.getFloat();
-        }
-
-        // Load vocabulary
-        int nVocab = vocabBuf.getInt();
-        Log.d(TAG, "nVocab: " + nVocab);
-        for (int i = 0; i < nVocab; i++) {
-            int len = vocabBuf.getInt();
-            byte[] wordBytes = new byte[len];
-            vocabBuf.get(wordBytes, 0, wordBytes.length);
-            String word = new String(wordBytes);
-            mWhisper.vocab.tokenToWord.put(i, word);
-        }
-
-        // Add additional vocab ids
-        int mVocabAdditional;
-        if (!multilingual) {
-            mVocabAdditional = WhisperUtil.N_VOCAB_ENGLISH;
-        } else {
-            mVocabAdditional = WhisperUtil.N_VOCAB_MULTILINGUAL;
-            WhisperUtil.TOKEN_EOT++;
-            WhisperUtil.TOKEN_SOT++;
-            WhisperUtil.TOKEN_PREV++;
-            WhisperUtil.TOKEN_SOLM++;
-            WhisperUtil.TOKEN_NOT++;
-            WhisperUtil.TOKEN_BEG++;
-        }
-
-        for (int i = nVocab; i < mVocabAdditional; i++) {
-            String word;
-            if (i > WhisperUtil.TOKEN_BEG) {
-                word = "[_TT_" + (i - WhisperUtil.TOKEN_BEG) + "]";
-            } else if (i == WhisperUtil.TOKEN_EOT) {
-                word = "[_EOT_]";
-            } else if (i == WhisperUtil.TOKEN_SOT) {
-                word = "[_SOT_]";
-            } else if (i == WhisperUtil.TOKEN_PREV) {
-                word = "[_PREV_]";
-            } else if (i == WhisperUtil.TOKEN_NOT) {
-                word = "[_NOT_]";
-            } else if (i == WhisperUtil.TOKEN_BEG) {
-                word = "[_BEG_]";
-            } else {
-                word = "[_extra_token_" + i + "]";
-            }
-
-            mWhisper.vocab.tokenToWord.put(i, word);
-            //Log.d(TAG, "i= " + i + ", word= " + word);
-        }
-    }
-
     private float[] getMelSpectrogram(String wavePath) {
         // Get samples in PCM_FLOAT format
         float[] samples = WaveUtil.getSamples(wavePath);
@@ -165,14 +82,12 @@ public class TFLiteEngine implements ITFLiteEngine {
         System.arraycopy(samples, 0, inputSamples, 0, copyLength);
 
         int cores = Runtime.getRuntime().availableProcessors();
-        if (!WhisperUtil.getMelSpectrogram(inputSamples, inputSamples.length, WhisperUtil.WHISPER_SAMPLE_RATE,
-                WhisperUtil.WHISPER_N_FFT, WhisperUtil.WHISPER_HOP_LENGTH, WhisperUtil.WHISPER_N_MEL,
-                cores, mWhisper.filters, mWhisper.mel)) {
+        if (!mWhisper.calculateMelSpectrogram(inputSamples, inputSamples.length, cores)) {
             Log.d(TAG, "%s: failed to compute mel spectrogram");
             return null;
         }
 
-        return mWhisper.mel.data;
+        return mWhisper.getMelData();
     }
 
     private String runInference(float[] inputData) {
@@ -215,19 +130,19 @@ public class TFLiteEngine implements ITFLiteEngine {
         StringBuilder result = new StringBuilder();
         for (int i = 0; i < outputLen; i++) {
             int token = outputBuffer.getBuffer().getInt();
-            if (token == WhisperUtil.TOKEN_EOT)
+            if (token == mWhisper.getTokenEOT())
                 break;
 
             // Get word for token and Skip additional token
-            if (token < WhisperUtil.TOKEN_EOT) {
+            if (token < mWhisper.getTokenEOT()) {
                 String word = mWhisper.getWordFromToken(token);
                 Log.d(TAG, "Adding token: " + token + ", word: " + word);
                 result.append(word);
             } else {
-                if (token == WhisperUtil.TASK_TRANSCRIBE)
+                if (token == WhisperUtil.TOKEN_TRANSCRIBE)
                     Log.d(TAG, "It is Transcription...");
 
-                if (token == WhisperUtil.TASK_TRANSLATE)
+                if (token == WhisperUtil.TOKEN_TRANSLATE)
                     Log.d(TAG, "It is Translation...");
 
                 String word = mWhisper.getWordFromToken(token);

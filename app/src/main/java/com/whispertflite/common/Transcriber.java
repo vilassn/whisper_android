@@ -4,20 +4,24 @@ import android.content.Context;
 import android.util.Log;
 
 import com.whispertflite.R;
+import com.whispertflite.engine.TFLiteEngine;
 
 import java.io.File;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Transcriber extends Thread {
     private final String TAG = "Transcriber";
+    private Context mContext;
     private String mInputWavFile;
-    private Context mContext = null;
     private IUpdateListener mUpdateListener = null;
 
-//    private final ITFLiteEngine mTFLiteEngine = new com.whispertflite.java.TFLiteEngine();
-    private final ITFLiteEngine mTFLiteEngine = new com.whispertflite.cpp.TFLiteEngine();
-//    private final ITFLiteEngine mTFLiteEngine = new com.whispertflite.translate.TFLiteEngine();
+    private final ITFLiteEngine mTFLiteEngine = new TFLiteEngine();
+//    private final IEngine mTFLiteEngine = new TFLiteEngineNative();
+//    private final ITFLiteEngine mTFLiteEngine = new TFLiteEngineTranslate();
     private static final AtomicBoolean mTranscriptionInProgress = new AtomicBoolean(false);
+    public static boolean isTranscriptionInProgress() {
+        return mTranscriptionInProgress.get();
+    }
 
     public Transcriber(Context context, String inputWavFile) {
         mContext = context;
@@ -27,10 +31,6 @@ public class Transcriber extends Thread {
     public void setUpdateListener(IUpdateListener listener) {
         mUpdateListener = listener;
 
-    }
-
-    public static boolean isTranscriptionInProgress() {
-        return mTranscriptionInProgress.get();
     }
 
     @Override

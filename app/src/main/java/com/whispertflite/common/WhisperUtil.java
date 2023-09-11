@@ -4,31 +4,36 @@ import static java.lang.Math.cos;
 import static java.lang.Math.log10;
 import static java.lang.Math.sin;
 
+import android.util.Log;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 public class WhisperUtil {
-
     private static final String TAG = "WhisperUtil";
 
     // Token types
-    public static int TOKEN_EOT = 50256; // end of transcript
-    public static int TOKEN_SOT = 50257; // start of transcript
-    public static int TOKEN_PREV = 50360;
-    public static int TOKEN_SOLM = 50361; // ??
-    public static int TOKEN_NOT = 50362; // no timestamps
-    public static int TOKEN_BEG = 50363;
+    private int token_EOT = 50256; // end of transcript
+    private int token_SOT = 50257; // start of transcript
+    private int token_PREV = 50360;
+    private int token_SOLM = 50361; // ??
+    private int token_NOT = 50362; // no timestamps
+    private int token_BEG = 50363;
 
     // Vocab types
-    public static final int N_VOCAB_ENGLISH = 51864;       // for english only vocab
-    public static final int N_VOCAB_MULTILINGUAL = 51865;  // for multilingual vocab
+    private final int N_VOCAB_ENGLISH = 51864;       // for english only vocab
+    private final int N_VOCAB_MULTILINGUAL = 51865;  // for multilingual vocab
 
     // Available tasks
-    public static final int TASK_TRANSLATE = 50358;
-    public static final int TASK_TRANSCRIBE = 50359;
-
+    public static final int TOKEN_TRANSLATE = 50358;
+    public static final int TOKEN_TRANSCRIBE = 50359;
     public static final int WHISPER_SAMPLE_RATE = 16000;
     public static final int WHISPER_N_FFT = 400;
     public static final int WHISPER_N_MEL = 80;
@@ -36,66 +41,137 @@ public class WhisperUtil {
     public static final int WHISPER_CHUNK_SIZE = 30;
     public static final int WHISPER_MEL_LEN = 3000;
 
-    public static final int[] golden_generated_ids = {
+    public final int[] golden_generated_ids = {
             50257, 50362, 1770, 13, 2264, 346, 353, 318,
             262, 46329, 286, 262, 3504, 6097, 11, 290, 356, 389, 9675, 284, 7062
     };
 
-    public WhisperVocab vocab = new WhisperVocab();
-    public WhisperFilter filters = new WhisperFilter();
-    public WhisperMel mel = new WhisperMel();
+    private WhisperVocab vocab = new WhisperVocab();
+    private WhisperFilter filters = new WhisperFilter();
+    private WhisperMel mel = new WhisperMel();
 
-    // Helper class definitions
-    public static class WhisperVocab {
-        public Map<Integer, String> tokenToWord = new HashMap<>();
-    }
-
-    public static class WhisperFilter {
-        public int nMel = 0;
-        public int nFft = 0;
-        public float[] data;
-    }
-
-    public static class WhisperMel {
-        public int nLen = 0;
-        public int nMel = 0;
-        public float[] data;
-    }
-
-    public static class InputLang {
-        public String name;
-        public String code;
-        public long id;
-
-        public InputLang(String name, String code, long id) {
-            this.name = name;
-            this.code = code;
-            this.id = id;
-        }
-
-        // Initialize the list of input language objects
-        public ArrayList<InputLang> getLangList() {
-            ArrayList<InputLang> inputLangList = new ArrayList<>();
-            inputLangList.add(new InputLang("English", "en", 50259));
-            inputLangList.add(new InputLang("Spanish", "es", 50262));
-            inputLangList.add(new InputLang("Hindi", "hi", 50276));
-            inputLangList.add(new InputLang("Telugu", "te", 50299));
-            return inputLangList;
-        }
-    }
 
     // Helper functions definitions
+    public int getTokenEOT() {
+        return token_EOT;
+    }
+
+    public int getTokenSOT() {
+        return token_SOT;
+    }
+
+    public int getTokenPREV() {
+        return token_PREV;
+    }
+
+    public int getTokenSOLM() {
+        return token_SOLM;
+    }
+
+    public int getTokenNOT() {
+        return token_NOT;
+    }
+
+    public int getTokenBEG() {
+        return token_BEG;
+    }
+
+    public float[] getMelData() {
+        return mel.data;
+    }
+
     public String getWordFromToken(int token) {
         return vocab.tokenToWord.get(token);
     }
 
-    // nSamples size => WHISPER_SAMPLE_RATE * WHISPER_CHUNK_SIZE => 480000
-    public static boolean getMelSpectrogram(
-            float[] samples, int nSamples, int sampleRate,
-            int fftSize, int fftStep, int nMel, int nThreads,
-            WhisperFilter filters, WhisperMel mel) {
+    // Load filters and vocab data from pre-generated filters_vocab_gen.bin file
+    public void loadFiltersAndVocab(boolean multilingual, String vocabPath) throws IOException {
 
-        mel.nMel = nMel;
+        // Read vocab file
+        byte[] bytes = Files.readAllBytes(Paths.get(vocabPath));
+        ByteBuffer vocabBuf = ByteBuffer.wrap(bytes);
+        vocabBuf.order(ByteOrder.nativeOrder());
+        Log.d(TAG, "Vocab file size: " + vocabBuf.limit());
+
+        // @magic:USEN
+        int magic = vocabBuf.getInt();
+        if (magic == 0x5553454e) {
+            Log.d(TAG, "Magic number: " + magic);
+        } else {
+            Log.d(TAG, "Invalid vocab file (bad magic: " + magic + "), " + vocabPath);
+            return;
+        }
+
+        // Load mel filters
+        filters.nMel = vocabBuf.getInt();
+        filters.nFft = vocabBuf.getInt();
+        Log.d(TAG, "n_mel:" + filters.nMel + ", n_fft:" + filters.nFft);
+
+        byte[] filterData = new byte[filters.nMel * filters.nFft * Float.BYTES];
+        vocabBuf.get(filterData, 0, filterData.length);
+        ByteBuffer filterBuf = ByteBuffer.wrap(filterData);
+        filterBuf.order(ByteOrder.nativeOrder());
+
+        filters.data = new float[filters.nMel * filters.nFft];
+        for (int i = 0; filterBuf.hasRemaining(); i++) {
+            filters.data[i] = filterBuf.getFloat();
+        }
+
+        // Load vocabulary
+        int nVocab = vocabBuf.getInt();
+        Log.d(TAG, "nVocab: " + nVocab);
+        for (int i = 0; i < nVocab; i++) {
+            int len = vocabBuf.getInt();
+            byte[] wordBytes = new byte[len];
+            vocabBuf.get(wordBytes, 0, wordBytes.length);
+            String word = new String(wordBytes);
+            vocab.tokenToWord.put(i, word);
+        }
+
+        // Add additional vocab ids
+        int nVocabAdditional;
+        if (!multilingual) {
+            nVocabAdditional = N_VOCAB_ENGLISH;
+        } else {
+            nVocabAdditional = N_VOCAB_MULTILINGUAL;
+            token_EOT++;
+            token_SOT++;
+            token_PREV++;
+            token_SOLM++;
+            token_NOT++;
+            token_BEG++;
+        }
+
+        for (int i = nVocab; i < nVocabAdditional; i++) {
+            String word;
+            if (i > token_BEG) {
+                word = "[_TT_" + (i - token_BEG) + "]";
+            } else if (i == token_EOT) {
+                word = "[_EOT_]";
+            } else if (i == token_SOT) {
+                word = "[_SOT_]";
+            } else if (i == token_PREV) {
+                word = "[_PREV_]";
+            } else if (i == token_NOT) {
+                word = "[_NOT_]";
+            } else if (i == token_BEG) {
+                word = "[_BEG_]";
+            } else {
+                word = "[_extra_token_" + i + "]";
+            }
+
+            vocab.tokenToWord.put(i, word);
+            //Log.d(TAG, "i= " + i + ", word= " + word);
+        }
+    }
+
+    // nSamples size => WHISPER_SAMPLE_RATE * WHISPER_CHUNK_SIZE => 480000
+    public boolean calculateMelSpectrogram(float[] samples, int nSamples, int nThreads) {
+
+        int fftSize = WHISPER_N_FFT;
+        int fftStep = WHISPER_HOP_LENGTH;
+
+        mel.nMel = WHISPER_N_MEL;
         mel.nLen = nSamples / fftStep;
         mel.data = new float[mel.nMel * mel.nLen];
 
@@ -123,49 +199,49 @@ public class WhisperUtil {
 /////////////// END of Block ///////////////////////////////////////////////////////////////////////
 
 /////////////// COMMENT below block to use multithreaded mel calculation ///////////////////////////
-                float[] fftIn = new float[fftSize];
-                Arrays.fill(fftIn, 0.0f);
-                float[] fftOut = new float[fftSize * 2];
+        float[] fftIn = new float[fftSize];
+        Arrays.fill(fftIn, 0.0f);
+        float[] fftOut = new float[fftSize * 2];
 
-                for (int i = 0; i < mel.nLen; i++) {
+        for (int i = 0; i < mel.nLen; i++) {
 /////////////// END of Block ///////////////////////////////////////////////////////////////////////
 
-                    int offset = i * fftStep;
+            int offset = i * fftStep;
 
-                    // apply Hanning window
-                    for (int j = 0; j < fftSize; j++) {
-                        if (offset + j < nSamples) {
-                            fftIn[j] = hann[j] * samples[offset + j];
-                        } else {
-                            fftIn[j] = 0.0f;
-                        }
-                    }
-
-                    // FFT -> mag^2
-                    fft(fftIn, fftOut);
-                    for (int j = 0; j < fftSize; j++) {
-                        fftOut[j] = fftOut[2 * j] * fftOut[2 * j] + fftOut[2 * j + 1] * fftOut[2 * j + 1];
-                    }
-
-                    for (int j = 0; j < fftSize / 2; j++) {
-                        fftOut[j] += fftOut[fftSize - j - 1];
-                    }
-
-                    // mel spectrogram
-                    for (int j = 0; j < mel.nMel; j++) {
-                        double sum = 0.0;
-                        for (int k = 0; k < nFft; k++) {
-                            sum += (fftOut[k] * filters.data[j * nFft + k]);
-                        }
-
-                        if (sum < 1e-10) {
-                            sum = 1e-10;
-                        }
-
-                        sum = log10(sum);
-                        mel.data[j * mel.nLen + i] = (float) sum;
-                    }
+            // apply Hanning window
+            for (int j = 0; j < fftSize; j++) {
+                if (offset + j < nSamples) {
+                    fftIn[j] = hann[j] * samples[offset + j];
+                } else {
+                    fftIn[j] = 0.0f;
                 }
+            }
+
+            // FFT -> mag^2
+            fft(fftIn, fftOut);
+            for (int j = 0; j < fftSize; j++) {
+                fftOut[j] = fftOut[2 * j] * fftOut[2 * j] + fftOut[2 * j + 1] * fftOut[2 * j + 1];
+            }
+
+            for (int j = 0; j < fftSize / 2; j++) {
+                fftOut[j] += fftOut[fftSize - j - 1];
+            }
+
+            // mel spectrogram
+            for (int j = 0; j < mel.nMel; j++) {
+                double sum = 0.0;
+                for (int k = 0; k < nFft; k++) {
+                    sum += (fftOut[k] * filters.data[j * nFft + k]);
+                }
+
+                if (sum < 1e-10) {
+                    sum = 1e-10;
+                }
+
+                sum = log10(sum);
+                mel.data[j * mel.nLen + i] = (float) sum;
+            }
+        }
 
 /////////////// UNCOMMENT below block to use multithreaded mel calculation /////////////////////////
 //            });
@@ -202,7 +278,7 @@ public class WhisperUtil {
         return true;
     }
 
-    private static void dft(float[] input, float[] output) {
+    private void dft(float[] input, float[] output) {
         int inSize = input.length;
         for (int k = 0; k < inSize; k++) {
             float re = 0.0f;
@@ -217,7 +293,7 @@ public class WhisperUtil {
         }
     }
 
-    private static void fft(float[] input, float[] output) {
+    private void fft(float[] input, float[] output) {
         int inSize = input.length;
         if (inSize == 1) {
             output[0] = input[0];
@@ -260,6 +336,45 @@ public class WhisperUtil {
             output[2 * k + 1] = evenFft[2 * k + 1] + re * imOdd + im * reOdd;
             output[2 * (k + inSize / 2) + 0] = evenFft[2 * k + 0] - re * reOdd + im * imOdd;
             output[2 * (k + inSize / 2) + 1] = evenFft[2 * k + 1] - re * imOdd - im * reOdd;
+        }
+    }
+
+    // Helper class definitions
+    private static class WhisperVocab {
+        private Map<Integer, String> tokenToWord = new HashMap<>();
+    }
+
+    private static class WhisperFilter {
+        int nMel = 0;
+        int nFft = 0;
+        float[] data;
+    }
+
+    private static class WhisperMel {
+        int nLen = 0;
+        int nMel = 0;
+        float[] data;
+    }
+
+    private static class InputLang {
+        String name;
+        String code;
+        long id;
+
+        private InputLang(String name, String code, long id) {
+            this.name = name;
+            this.code = code;
+            this.id = id;
+        }
+
+        // Initialize the list of input language objects
+        private ArrayList<InputLang> getLangList() {
+            ArrayList<InputLang> inputLangList = new ArrayList<>();
+            inputLangList.add(new InputLang("English", "en", 50259));
+            inputLangList.add(new InputLang("Spanish", "es", 50262));
+            inputLangList.add(new InputLang("Hindi", "hi", 50276));
+            inputLangList.add(new InputLang("Telugu", "te", 50299));
+            return inputLangList;
         }
     }
 }

@@ -18,9 +18,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Recorder extends Thread {
     private final String TAG = "Recorder";
-    private Context mContext = null;
+    private Context mContext;
     private IUpdateListener mUpdateListener = null;
     private static final AtomicBoolean mRecordingInProgress = new AtomicBoolean(false);
+    public static boolean isRecordingInProgress() {
+        return mRecordingInProgress.get();
+    }
 
     public Recorder(Context context) {
         mContext = context;
@@ -28,10 +31,6 @@ public class Recorder extends Thread {
 
     public void setUpdateListener(IUpdateListener listener) {
         mUpdateListener = listener;
-    }
-
-    public static boolean isRecordingInProgress() {
-        return mRecordingInProgress.get();
     }
 
     public void stopRecording() {

@@ -1,12 +1,12 @@
-package com.whispertflite.cpp;
+package com.whispertflite.engine;
 
 import com.whispertflite.common.ITFLiteEngine;
 
-public class TFLiteEngine implements ITFLiteEngine {
+public class TFLiteEngineNative implements ITFLiteEngine {
     private boolean mIsInitialized = false;
     private final long nativePtr; // Native pointer to the TFLiteEngine instance
 
-    public TFLiteEngine() {
+    public TFLiteEngineNative() {
         nativePtr = createTFLiteEngine();
     }
 

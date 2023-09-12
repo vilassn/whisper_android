@@ -18,8 +18,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class Recorder {
     private final String TAG = "Recorder";
     private Context mContext;
-    private String mWavFile;
-    private Thread mThread = null;
+    private String mWavFilePath;
+    private Thread mRecordingThread = null;
     private IUpdateListener mUpdateListener = null;
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
@@ -32,20 +32,20 @@ public class Recorder {
     }
 
     public void setFilePath(String wavFile) {
-        mWavFile = wavFile;
+        mWavFilePath = wavFile;
     }
 
     public void startRecording() {
-        mThread = new Thread(this::threadFunction);
-        mThread.start();
+        mRecordingThread = new Thread(this::threadFunction);
+        mRecordingThread.start();
     }
 
     public void stopRecording() {
         mInProgress.set(false);
         try {
-            if (mThread != null) {
-                mThread.join();
-                mThread = null;
+            if (mRecordingThread != null) {
+                mRecordingThread.join();
+                mRecordingThread = null;
             }
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
@@ -96,8 +96,8 @@ public class Recorder {
             audioRecord.stop();
             audioRecord.release();
 
-            WaveUtil.createWaveFile(mWavFile, byteBuffer.array(), sampleRateInHz, channels, bytesPerSample);
-            Log.d(TAG, "Recorded file: " + mWavFile);
+            WaveUtil.createWaveFile(mWavFilePath, byteBuffer.array(), sampleRateInHz, channels, bytesPerSample);
+            Log.d(TAG, "Recorded file: " + mWavFilePath);
             mUpdateListener.onStatusChanged(mContext.getString(R.string.recording_is_completed));
         } catch (Exception e) {
             throw new RuntimeException("Writing of recorded audio failed", e);

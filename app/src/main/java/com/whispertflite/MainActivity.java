@@ -20,7 +20,6 @@ import androidx.core.content.ContextCompat;
 
 import com.whispertflite.common.Recorder;
 import com.whispertflite.common.Transcriber;
-import com.whispertflite.common.IUpdateListener;
 import com.whispertflite.common.WaveUtil;
 
 import java.io.File;
@@ -113,12 +112,36 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // English-only model and vocab
+//        boolean isMultilingual = false;
+//        String modelPath = getFilePath("whisper-tiny-en.tflite");
+//        String vocabPath = getFilePath("filters_vocab_gen.bin");
+
+        // Multilingual model and vocab
+        boolean isMultilingual = true;
+        String modelPath = getFilePath("whisper-tiny.tflite");
+        String vocabPath = getFilePath("filters_vocab_multilingual.bin");
+
+        // TODO: pass model and vocab as per requirement
+        mTranscriber = new Transcriber(this, modelPath, vocabPath, isMultilingual);
+        mTranscriber.setUpdateListener(message -> mHandler.post(() -> tvResult.setText(message)));
+
+        mRecorder = new Recorder(this);
+        mRecorder.setUpdateListener(message -> {
+            mHandler.post(() -> tvResult.setText(message));
+            if (message.equals(getString(R.string.recording_is_completed)))
+                mHandler.post(() -> btnMicRec.setText(getString(R.string.record)));
+        });
+
         // Call the method to copy specific file types from assets to data folder
         String[] extensionsToCopy = {"pcm", "bin", "wav", "tflite"};
         copyAssetsWithExtensionsToDataFolder(this, extensionsToCopy);
 
         // Assume this Activity is the current activity, check record permission
         checkRecordPermission();
+
+        // for debugging
+//        testParallelTranscriptions();
     }
 
     private void checkRecordPermission() {
@@ -143,31 +166,20 @@ public class MainActivity extends AppCompatActivity {
     private void startRecording() {
         checkRecordPermission();
 
-        mRecorder = new Recorder(this);
-        mRecorder.setUpdateListener(message -> {
-            mHandler.post(() -> tvResult.setText(message));
-            if (message.equals(getString(R.string.recording_is_completed)))
-                mHandler.post(() -> btnMicRec.setText(getString(R.string.record)));
-        });
-        mRecorder.setFilePath(getFilePath(WaveUtil.RECORDING_FILE));
+        String waveFilePath = getFilePath(WaveUtil.RECORDING_FILE);
+        mRecorder.setFilePath(waveFilePath);
         mRecorder.startRecording();
-
         mHandler.post(() -> btnMicRec.setText(getString(R.string.stop)));
     }
 
     private void stopRecording() {
-        if (mRecorder != null) {
-            mRecorder.stopRecording();
-            mRecorder = null;
-        }
-
+        mRecorder.stopRecording();
         mHandler.post(() -> btnMicRec.setText(getString(R.string.record)));
     }
 
     private void startTranscription() {
-        mTranscriber = new Transcriber(this);
-        mTranscriber.setUpdateListener(message -> mHandler.post(() -> tvResult.setText(message)));
-        mTranscriber.setFilePath(getFilePath(mSelectedFile));
+        String waveFilePath = getFilePath(mSelectedFile);
+        mTranscriber.setFilePath(waveFilePath);
         mTranscriber.startTranscription();
     }
 
@@ -214,5 +226,42 @@ public class MainActivity extends AppCompatActivity {
 
         Log.d(TAG, "Returned asset path: " + outfile.getAbsolutePath());
         return outfile.getAbsolutePath();
+    }
+
+    // Test code for parallel transcriptions
+    private void testParallelTranscriptions() {
+
+        // Define the file names in an array
+        String[] fileNames = {
+                "english_test1.wav",
+                "english_test2.wav",
+                "english_test_3_bili.wav"
+        };
+
+        // Multilingual model and vocab
+        String modelMultilingual = getFilePath("whisper-tiny.tflite");
+        String vocabMultilingual = getFilePath("filters_vocab_multilingual.bin");
+
+        // Perform transcription for multiple audio files using multilingual model
+        for (String fileName : fileNames) {
+            Transcriber transcriber = new Transcriber(this, modelMultilingual, vocabMultilingual, true);
+            transcriber.setUpdateListener(message -> mHandler.post(() -> tvResult.setText(message)));
+            String waveFilePath = getFilePath(fileName);
+            transcriber.setFilePath(waveFilePath);
+            transcriber.startTranscription();
+        }
+
+        // English-only model and vocab
+        String modelEnglish = getFilePath("whisper-tiny-en.tflite");
+        String vocabEnglish = getFilePath("filters_vocab_gen.bin");
+
+        // Perform transcription for multiple audio files using english only model
+        for (String fileName : fileNames) {
+            Transcriber transcriber = new Transcriber(this, modelEnglish, vocabEnglish, false);
+            transcriber.setUpdateListener(message -> mHandler.post(() -> tvResult.setText(message)));
+            String waveFilePath = getFilePath(fileName);
+            transcriber.setFilePath(waveFilePath);
+            transcriber.startTranscription();
+        }
     }
 }

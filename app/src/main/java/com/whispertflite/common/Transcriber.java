@@ -9,23 +9,20 @@ import com.whispertflite.engine.TFLiteEngine;
 import java.io.File;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class Transcriber extends Thread {
+public class Transcriber {
     private final String TAG = "Transcriber";
     private Context mContext;
-    private String mInputWavFile;
+    private String mWavFile;
+    private Thread mThread = null;
     private IUpdateListener mUpdateListener = null;
 
     private final ITFLiteEngine mTFLiteEngine = new TFLiteEngine();
 //    private final IEngine mTFLiteEngine = new TFLiteEngineNative();
 //    private final ITFLiteEngine mTFLiteEngine = new TFLiteEngineTranslate();
-    private static final AtomicBoolean mTranscriptionInProgress = new AtomicBoolean(false);
-    public static boolean isTranscriptionInProgress() {
-        return mTranscriptionInProgress.get();
-    }
+    private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
-    public Transcriber(Context context, String inputWavFile) {
+    public Transcriber(Context context) {
         mContext = context;
-        mInputWavFile = inputWavFile;
     }
 
     public void setUpdateListener(IUpdateListener listener) {
@@ -33,15 +30,39 @@ public class Transcriber extends Thread {
 
     }
 
-    @Override
-    public void run() {
+    public void setFilePath(String wavFile) {
+        mWavFile = wavFile;
+    }
+
+    public void startTranscription() {
+        mThread = new Thread(this::threadFunction);
+        mThread.start();
+    }
+
+    public void stopRecording() {
+        mInProgress.set(false);
         try {
-            mTranscriptionInProgress.set(true);
+            if (mThread != null) {
+                mThread.join();
+                mThread = null;
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public boolean isTranscriptionInProgress() {
+        return mInProgress.get();
+    }
+
+    private void threadFunction() {
+        try {
+            mInProgress.set(true);
 
             // Initialize TFLiteEngine
             if (!mTFLiteEngine.isInitialized()) {
                 // Update progress to UI thread
-                mUpdateListener.updateStatus(mContext.getString(R.string.loading_model_and_vocab));
+                mUpdateListener.onStatusChanged(mContext.getString(R.string.loading_model_and_vocab));
 
                 // set true for multilingual support
                 // whisper.tflite => not multilingual
@@ -52,12 +73,13 @@ public class Transcriber extends Thread {
                 // Get Model and vocab file paths
                 String modelPath;
                 String vocabPath;
+                String filesDir = new File(mWavFile).getParent();
                 if (isMultilingual) {
-                    modelPath = getFilePath("whisper-tiny.tflite");
-                    vocabPath = getFilePath("filters_vocab_multilingual.bin");
+                    modelPath = filesDir + File.separator + "whisper-tiny.tflite";
+                    vocabPath = filesDir + File.separator + "filters_vocab_multilingual.bin";
                 } else {
-                    modelPath = getFilePath("whisper-tiny-en.tflite");
-                    vocabPath = getFilePath("filters_vocab_gen.bin");
+                    modelPath = filesDir + File.separator + "whisper-tiny-en.tflite";
+                    vocabPath = filesDir + File.separator + "filters_vocab_gen.bin";
                 }
 
                 mTFLiteEngine.initialize(isMultilingual, vocabPath, modelPath);
@@ -65,44 +87,32 @@ public class Transcriber extends Thread {
 
             // Get Transcription
             if (mTFLiteEngine.isInitialized()) {
-                String wavePath = getFilePath(mInputWavFile);
-                Log.d(TAG, "WaveFile: " + wavePath);
+                Log.d(TAG, "WaveFile: " + mWavFile);
 
-                if (new File(wavePath).exists()) {
+                if (new File(mWavFile).exists()) {
                     // Update progress to UI thread
-                    mUpdateListener.updateStatus(mContext.getString(R.string.transcribing));
+                    mUpdateListener.onStatusChanged(mContext.getString(R.string.transcribing));
                     long startTime = System.currentTimeMillis();
 
                     // Get transcription from wav file
-                    String result = mTFLiteEngine.getTranscription(wavePath);
+                    String result = mTFLiteEngine.getTranscription(mWavFile);
 
                     // Display output result
-                    mUpdateListener.updateStatus(result);
+                    mUpdateListener.onStatusChanged(result);
                     long endTime = System.currentTimeMillis();
                     long timeTaken = endTime - startTime;
                     Log.d(TAG, "Time Taken for transcription: " + timeTaken + "ms");
                     Log.d(TAG, "Result len: " + result.length() + ", Result: " + result);
                 } else {
-                    mUpdateListener.updateStatus(mContext.getString(R.string.input_file_doesn_t_exist));
+                    mUpdateListener.onStatusChanged(mContext.getString(R.string.input_file_doesn_t_exist));
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
             Log.e(TAG, "Error..", e);
-            mUpdateListener.updateStatus(e.getMessage());
+            mUpdateListener.onStatusChanged(e.getMessage());
         } finally {
-            mTranscriptionInProgress.set(false);
+            mInProgress.set(false);
         }
-    }
-
-    // Copies specified asset to app's files directory and returns its absolute path.
-    private String getFilePath(String assetName) {
-        File outfile = new File(mContext.getFilesDir(), assetName);
-        if (!outfile.exists()) {
-            Log.d(TAG, "File not found - " + outfile.getAbsolutePath());
-        }
-
-        Log.d(TAG, "Returned asset path: " + outfile.getAbsolutePath());
-        return outfile.getAbsolutePath();
     }
 }

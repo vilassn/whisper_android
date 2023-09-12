@@ -12,18 +12,16 @@ import androidx.core.app.ActivityCompat;
 
 import com.whispertflite.R;
 
-import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class Recorder extends Thread {
+public class Recorder {
     private final String TAG = "Recorder";
     private Context mContext;
+    private String mWavFile;
+    private Thread mThread = null;
     private IUpdateListener mUpdateListener = null;
-    private static final AtomicBoolean mRecordingInProgress = new AtomicBoolean(false);
-    public static boolean isRecordingInProgress() {
-        return mRecordingInProgress.get();
-    }
+    private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
     public Recorder(Context context) {
         mContext = context;
@@ -33,19 +31,39 @@ public class Recorder extends Thread {
         mUpdateListener = listener;
     }
 
-    public void stopRecording() {
-        mRecordingInProgress.set(false);
+    public void setFilePath(String wavFile) {
+        mWavFile = wavFile;
     }
 
-    @Override
-    public void run() {
+    public void startRecording() {
+        mThread = new Thread(this::threadFunction);
+        mThread.start();
+    }
+
+    public void stopRecording() {
+        mInProgress.set(false);
+        try {
+            if (mThread != null) {
+                mThread.join();
+                mThread = null;
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public boolean isRecordingInProgress() {
+        return mInProgress.get();
+    }
+
+    private void threadFunction() {
         try {
             if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                 return;
             }
 
-            mRecordingInProgress.set(true);
-            mUpdateListener.updateStatus(mContext.getString(R.string.recording));
+            mInProgress.set(true);
+            mUpdateListener.onStatusChanged(mContext.getString(R.string.recording));
 
             int channels = 1;
             int bytesPerSample = 2;
@@ -64,7 +82,7 @@ public class Recorder extends Thread {
 
             int totalBytesRead = 0;
             byte[] buffer = new byte[bufferSize];
-            while (mRecordingInProgress.get() && (totalBytesRead < bufferSize30Sec)) {
+            while (mInProgress.get() && (totalBytesRead < bufferSize30Sec)) {
                 int bytesRead = audioRecord.read(buffer, 0, bufferSize);
                 if (bytesRead > 0) {
                     byteBuffer.put(buffer, 0, bytesRead);
@@ -78,14 +96,13 @@ public class Recorder extends Thread {
             audioRecord.stop();
             audioRecord.release();
 
-            String wavePath = mContext.getFilesDir() + File.separator + WaveUtil.RECORDING_FILE;
-            WaveUtil.createWaveFile(wavePath, byteBuffer.array(), sampleRateInHz, channels, bytesPerSample);
-            Log.d(TAG, "Recorded file: " + wavePath);
-            mUpdateListener.updateStatus(mContext.getString(R.string.recording_is_completed));
+            WaveUtil.createWaveFile(mWavFile, byteBuffer.array(), sampleRateInHz, channels, bytesPerSample);
+            Log.d(TAG, "Recorded file: " + mWavFile);
+            mUpdateListener.onStatusChanged(mContext.getString(R.string.recording_is_completed));
         } catch (Exception e) {
             throw new RuntimeException("Writing of recorded audio failed", e);
         } finally {
-            mRecordingInProgress.set(false);
+            mInProgress.set(false);
         }
     }
 }

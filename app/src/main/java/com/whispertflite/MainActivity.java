@@ -30,7 +30,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity implements IUpdateListener {
+public class MainActivity extends AppCompatActivity {
 
     private final String TAG = "MainActivity";
 
@@ -53,24 +53,28 @@ public class MainActivity extends AppCompatActivity implements IUpdateListener {
         // Implementation of transcribe button functionality
         btnTranscb = findViewById(R.id.btnTranscb);
         btnTranscb.setOnClickListener(v -> {
-            if (Recorder.isRecordingInProgress()) {
+            if (mRecorder != null && mRecorder.isRecordingInProgress()) {
+                Log.d(TAG, "Recording is in progress... stopping...");
                 stopRecording();
             }
 
-            if (!Transcriber.isTranscriptionInProgress()) {
-                startTranscription();
-            } else {
+            if (mTranscriber != null && mTranscriber.isTranscriptionInProgress()) {
                 Log.d(TAG, "Transcription is already in progress...!");
+            } else {
+                Log.d(TAG, "Start transcription...");
+                startTranscription();
             }
         });
 
         // Implementation of record button functionality
         btnMicRec = findViewById(R.id.btnMicRecord);
         btnMicRec.setOnClickListener(v -> {
-            if (!Recorder.isRecordingInProgress()) {
-                startRecording();
-            } else {
+            if (mRecorder != null && mRecorder.isRecordingInProgress()) {
+                Log.d(TAG, "Recording is in progress... stopping...");
                 stopRecording();
+            } else {
+                Log.d(TAG, "Start recording...");
+                startRecording();
             }
         });
 
@@ -140,38 +144,31 @@ public class MainActivity extends AppCompatActivity implements IUpdateListener {
         checkRecordPermission();
 
         mRecorder = new Recorder(this);
-        mRecorder.setUpdateListener(this);
-        mRecorder.start();
+        mRecorder.setUpdateListener(message -> {
+            mHandler.post(() -> tvResult.setText(message));
+            if (message.equals(getString(R.string.recording_is_completed)))
+                mHandler.post(() -> btnMicRec.setText(getString(R.string.record)));
+        });
+        mRecorder.setFilePath(getFilePath(WaveUtil.RECORDING_FILE));
+        mRecorder.startRecording();
 
         mHandler.post(() -> btnMicRec.setText(getString(R.string.stop)));
     }
 
     private void stopRecording() {
-        try {
-            if (mRecorder != null) {
-                mRecorder.stopRecording();
-                mRecorder.join();
-                mRecorder = null;
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        if (mRecorder != null) {
+            mRecorder.stopRecording();
+            mRecorder = null;
         }
 
         mHandler.post(() -> btnMicRec.setText(getString(R.string.record)));
     }
 
     private void startTranscription() {
-        mTranscriber = new Transcriber(this, mSelectedFile);
-        mTranscriber.setUpdateListener(this);
-        mTranscriber.start();
-    }
-
-    @Override
-    public void updateStatus(final String message) {
-        mHandler.post(() -> tvResult.setText(message));
-
-        if(message.equals(getString(R.string.recording_is_completed)))
-            mHandler.post(() -> btnMicRec.setText(getString(R.string.record)));
+        mTranscriber = new Transcriber(this);
+        mTranscriber.setUpdateListener(message -> mHandler.post(() -> tvResult.setText(message)));
+        mTranscriber.setFilePath(getFilePath(mSelectedFile));
+        mTranscriber.startTranscription();
     }
 
     public static void copyAssetsWithExtensionsToDataFolder(Context context, String[] extensions) {
@@ -206,5 +203,16 @@ public class MainActivity extends AppCompatActivity implements IUpdateListener {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    // Copies specified asset to app's files directory and returns its absolute path.
+    private String getFilePath(String assetName) {
+        File outfile = new File(getFilesDir(), assetName);
+        if (!outfile.exists()) {
+            Log.d(TAG, "File not found - " + outfile.getAbsolutePath());
+        }
+
+        Log.d(TAG, "Returned asset path: " + outfile.getAbsolutePath());
+        return outfile.getAbsolutePath();
     }
 }

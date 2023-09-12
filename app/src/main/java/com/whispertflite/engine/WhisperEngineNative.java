@@ -1,12 +1,15 @@
 package com.whispertflite.engine;
 
-import com.whispertflite.common.ITFLiteEngine;
+import com.whispertflite.asr.IUpdateListener;
 
-public class TFLiteEngineNative implements ITFLiteEngine {
-    private boolean mIsInitialized = false;
+public class WhisperEngineNative implements IWhisperEngine {
+    private final String TAG = "WhisperEngineNative";
     private final long nativePtr; // Native pointer to the TFLiteEngine instance
 
-    public TFLiteEngineNative() {
+    private boolean mIsInitialized = false;
+    private IUpdateListener mUpdateListener = null;
+
+    public WhisperEngineNative() {
         nativePtr = createTFLiteEngine();
     }
 
@@ -17,6 +20,14 @@ public class TFLiteEngineNative implements ITFLiteEngine {
         return mIsInitialized;
     }
 
+    public void updateStatus(String message) {
+        if (mUpdateListener != null)
+            mUpdateListener.onStatusChanged(message);
+    }
+
+    public void setUpdateListener(IUpdateListener listener) {
+        mUpdateListener = listener;
+    }
     @Override
     public String getTranscription(String wavePath) {
         return transcribeFile(wavePath);
@@ -25,6 +36,11 @@ public class TFLiteEngineNative implements ITFLiteEngine {
     @Override
     public boolean isInitialized() {
         return mIsInitialized;
+    }
+
+    @Override
+    public void interrupt() {
+
     }
 
 

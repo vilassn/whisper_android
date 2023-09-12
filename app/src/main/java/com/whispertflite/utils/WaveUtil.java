@@ -1,4 +1,6 @@
-package com.whispertflite.common;
+package com.whispertflite.utils;
+
+import android.util.Log;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -8,8 +10,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
 public class WaveUtil {
-    private static final String TAG = "WaveUtil";
-    private static final int WAV_HEADER_SIZE = 44;
+    public static final String TAG = "WaveUtil";
     public static final String RECORDING_FILE = "MicInput.wav";
 
     public static void createWaveFile(String filePath, byte[] samples, int sampleRate, int numChannels, int bytesPerSample) {
@@ -39,6 +40,7 @@ public class WaveUtil {
             fileOutputStream.close();
         } catch (IOException e) {
             e.printStackTrace();
+            Log.e(TAG, "Error...", e);
         }
     }
 
@@ -47,7 +49,7 @@ public class WaveUtil {
             FileInputStream fileInputStream = new FileInputStream(filePath);
 
             // Read the WAV file header
-            byte[] header = new byte[WAV_HEADER_SIZE];
+            byte[] header = new byte[44];
             fileInputStream.read(header);
 
             // Check if it's a valid WAV file (contains "RIFF" and "WAVE" markers)
@@ -93,6 +95,7 @@ public class WaveUtil {
             return samples;
         } catch (IOException e) {
             e.printStackTrace();
+            Log.e(TAG, "Error...", e);
         }
         return new float[0];
     }

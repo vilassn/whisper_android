@@ -2,9 +2,9 @@ package com.whispertflite.engine;
 
 import android.util.Log;
 
-import com.whispertflite.common.ITFLiteEngine;
-import com.whispertflite.common.WaveUtil;
-import com.whispertflite.common.WhisperUtil;
+import com.whispertflite.asr.IUpdateListener;
+import com.whispertflite.utils.WaveUtil;
+import com.whispertflite.utils.WhisperUtil;
 
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
@@ -17,15 +17,31 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 
-public class TFLiteEngine implements ITFLiteEngine {
-    private final String TAG = "TFLiteEngine";
+public class WhisperEngineJava implements IWhisperEngine {
+    private final String TAG = "WhisperEngineJava";
+    private final WhisperUtil mWhisper = new WhisperUtil();
+
     private boolean mIsInitialized = false;
     private Interpreter mInterpreter = null;
-    private final WhisperUtil mWhisper = new WhisperUtil();
+    private IUpdateListener mUpdateListener = null;
 
     @Override
     public boolean isInitialized() {
         return mIsInitialized;
+    }
+
+    @Override
+    public void interrupt() {
+
+    }
+
+    public void updateStatus(String message) {
+        if (mUpdateListener != null)
+            mUpdateListener.onStatusChanged(message);
+    }
+
+    public void setUpdateListener(IUpdateListener listener) {
+        mUpdateListener = listener;
     }
 
     @Override

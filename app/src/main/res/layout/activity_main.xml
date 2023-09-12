@@ -4,50 +4,68 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="10dp"
     tools:context="com.whispertflite.MainActivity">
-
-    <Spinner
-        android:id="@+id/spnrFiles"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:padding="15dp"/>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="10dp">
+        android:orientation="horizontal">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnMicRecord"
+        <Spinner
+            android:id="@+id/spnrFiles"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnRecord"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:padding="10dp"
-            android:layout_margin="10dp"
-            android:text="@string/record"
-            android:background="@drawable/rounded_button_background" />
+            android:layout_below="@id/spnrFiles"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/rounded_button_background"
+            android:text="@string/record" />
 
-        <com.google.android.material.button.MaterialButton
+        <Button
             android:id="@+id/btnTranscb"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:padding="10dp"
-            android:layout_margin="10dp"
-            android:text="@string/transcribe"
-            android:background="@drawable/rounded_button_background" />
+            android:layout_below="@id/spnrFiles"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="8dp"
+            android:layout_toEndOf="@+id/btnRecord"
+            android:background="@drawable/rounded_button_background"
+            android:text="@string/transcribe" />
 
+        <Button
+            android:id="@+id/btnTransl"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/spnrFiles"
+            android:layout_marginTop="16dp"
+            android:layout_toEndOf="@+id/btnTranscb"
+            android:background="@drawable/rounded_button_background"
+            android:text="@string/translate" />
     </LinearLayout>
 
     <ScrollView
+        android:id="@+id/scrollView"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/btnRecord"
+        android:layout_marginTop="16dp">
 
         <TextView
             android:id="@+id/tvResult"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="10dp"
             android:textSize="20sp" />
 
     </ScrollView>

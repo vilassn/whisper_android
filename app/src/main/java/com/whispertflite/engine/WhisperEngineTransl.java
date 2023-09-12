@@ -2,9 +2,9 @@ package com.whispertflite.engine;
 
 import android.util.Log;
 
-import com.whispertflite.common.ITFLiteEngine;
-import com.whispertflite.common.WaveUtil;
-import com.whispertflite.common.WhisperUtil;
+import com.whispertflite.asr.IUpdateListener;
+import com.whispertflite.utils.WaveUtil;
+import com.whispertflite.utils.WhisperUtil;
 
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.Tensor;
@@ -20,22 +20,39 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public class TFLiteEngineTransl implements ITFLiteEngine {
-    private final String TAG = "TFLiteEngine";
+public class WhisperEngineTransl implements IWhisperEngine {
+    private final String TAG = "WhisperEngineTransl";
+    private final WhisperUtil mWhisperUtil = new WhisperUtil();
 
-    private String SIGNATURE_KEY = "serving_default";
-    private String WHISPER_ENCODER = "whisper-encoder-tiny.tflite";
-    private String WHISPER_DECODER_LANGUAGE = "whisper-decoder-tiny.tflite";
+    private static final String SIGNATURE_KEY = "serving_default";
+    private static final String WHISPER_ENCODER = "whisper-encoder-tiny.tflite";
+    private static final String WHISPER_DECODER_LANGUAGE = "whisper-decoder-tiny.tflite";
 
     private boolean mIsInitialized = false;
+    private IUpdateListener mUpdateListener = null;
     private Interpreter mInterpreterEncoder = null;
     private Interpreter mInterpreterDecoder = null;
-    private final WhisperUtil mWhisper = new WhisperUtil();
+    private final AtomicBoolean mIsInterrupted = new AtomicBoolean(false);
 
     @Override
     public boolean isInitialized() {
         return mIsInitialized;
+    }
+
+    @Override
+    public void interrupt() {
+        mIsInterrupted.set(true);
+    }
+
+    public void updateStatus(String message) {
+        if (mUpdateListener != null)
+            mUpdateListener.onStatusChanged(message);
+    }
+
+    public void setUpdateListener(IUpdateListener listener) {
+        mUpdateListener = listener;
     }
 
     @Override
@@ -47,7 +64,7 @@ public class TFLiteEngineTransl implements ITFLiteEngine {
         Log.d(TAG, "Model is loaded...!" + modelPath);
 
         // Load filters and vocab
-        mWhisper.loadFiltersAndVocab(multilingual, vocabPath);
+        mWhisperUtil.loadFiltersAndVocab(multilingual, vocabPath);
         Log.d(TAG, "Filters and Vocab are loaded...!");
 
         mIsInitialized = true;
@@ -57,6 +74,9 @@ public class TFLiteEngineTransl implements ITFLiteEngine {
 
     @Override
     public String getTranscription(String wavePath) {
+        // Set interrupted false ast beginning
+        mIsInterrupted.set(false);
+
         // Calculate Mel spectrogram
         Log.d(TAG, "Calculating Mel spectrogram...");
         float[] melSpectrogram = getMelSpectrogram(wavePath);
@@ -98,21 +118,22 @@ public class TFLiteEngineTransl implements ITFLiteEngine {
         System.arraycopy(samples, 0, inputSamples, 0, copyLength);
 
         int cores = Runtime.getRuntime().availableProcessors();
-        if (!mWhisper.calculateMelSpectrogram(inputSamples, inputSamples.length,cores)) {
+        if (!mWhisperUtil.calculateMelSpectrogram(inputSamples, inputSamples.length,cores)) {
             Log.d(TAG, "%s: failed to compute mel spectrogram");
             return null;
         }
 
-        return mWhisper.getMelData();
+        return mWhisperUtil.getMelData();
     }
 
     private String runInference(float[] inputData) {
         ByteBuffer encoderOutput = runEncoder(inputData);
-        // Input speech language (English 50259, Spanish 50262, Hindi 50276)
-        return runDecoder(encoderOutput, 50262, WhisperUtil.TOKEN_TRANSLATE);
+
+        // TODO: set input audio language and action as per need
+        int inputLang = 50262; // English 50259, Spanish 50262, Hindi 50276
+        return runDecoder(encoderOutput, inputLang, WhisperUtil.TOKEN_TRANSLATE);
     }
 
-    // Encoder function using TensorBuffer
     private ByteBuffer runEncoder(float[] inputBuffer) {
         // Load the TFLite model and allocate tensors for encoder
         mInterpreterEncoder.allocateTensors();
@@ -147,13 +168,12 @@ public class TFLiteEngineTransl implements ITFLiteEngine {
         return encoderOutputBuffer.getBuffer();
     }
 
-    // Decoder function using TensorBuffer
     private String runDecoder(ByteBuffer inputBuffer, long inputLang, long action) {
         // Initialize decoderInputIds to store the input ids for the decoder
         long[][] decoderInputIds = new long[1][384];
 
         // Create a prefix array with start of transcript, input language, action, and not time stamps
-        long[] prefix = {mWhisper.getTokenSOT(), inputLang, action, mWhisper.getTokenNOT()};
+        long[] prefix = {mWhisperUtil.getTokenSOT(), inputLang, action, mWhisperUtil.getTokenNOT()};
         int prefixLen = prefix.length;
 
         // Copy prefix elements to decoderInputIds
@@ -182,7 +202,7 @@ public class TFLiteEngineTransl implements ITFLiteEngine {
         StringBuilder result = new StringBuilder();
 
         int nextToken = -1;
-        while (nextToken != mWhisper.getTokenEOT()) {
+        while (nextToken != mWhisperUtil.getTokenEOT()) {
             // Resize decoder input for the next token
             mInterpreterDecoder.resizeInput(1, new int[]{1, prefixLen});
 
@@ -194,13 +214,17 @@ public class TFLiteEngineTransl implements ITFLiteEngine {
             decoderInputIds[0][prefixLen] = nextToken;
             prefixLen += 1;
 
-            if (nextToken != mWhisper.getTokenEOT()) {
-                String word = mWhisper.getWordFromToken(nextToken);
+            if (nextToken != mWhisperUtil.getTokenEOT()) {
+                String word = mWhisperUtil.getWordFromToken(nextToken);
                 if (word != null) {
                     Log.i(TAG, "token: " + nextToken + ", word: " + word);
                     result.append(word);
+                    updateStatus(result.toString());
                 }
             }
+
+            if(mIsInterrupted.get())
+                break;
         }
 
         return result.toString();

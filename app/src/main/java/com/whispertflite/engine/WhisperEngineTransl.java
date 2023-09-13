@@ -61,11 +61,11 @@ public class WhisperEngineTransl implements IWhisperEngine {
         String filesDir = new File(modelPath).getParent();
         mInterpreterEncoder = loadModel(new File(filesDir, WHISPER_ENCODER).getAbsolutePath());
         mInterpreterDecoder = loadModel(new File(filesDir, WHISPER_DECODER_LANGUAGE).getAbsolutePath());
-        Log.d(TAG, "Model is loaded...!" + modelPath);
+        Log.d(TAG, "Model is loaded..." + WHISPER_ENCODER + " " + WHISPER_DECODER_LANGUAGE);
 
         // Load filters and vocab
         mWhisperUtil.loadFiltersAndVocab(multilingual, vocabPath);
-        Log.d(TAG, "Filters and Vocab are loaded...!");
+        Log.d(TAG, "Filters and Vocab are loaded..." + vocabPath);
 
         mIsInitialized = true;
 
@@ -207,7 +207,7 @@ public class WhisperEngineTransl implements IWhisperEngine {
             mInterpreterDecoder.resizeInput(1, new int[]{1, prefixLen});
 
             // Run the decoder for the next token
-            mInterpreterDecoder.runSignature(decoderInputsMap, decoderOutputsMap, SIGNATURE_KEY);
+            mInterpreterDecoder.runSignature(decoderInputsMap, decoderOutputsMap);
 
             // Process the output to get the next token
             nextToken = argmax(decoderOutputBuffer[0], prefixLen - 1);
@@ -227,6 +227,8 @@ public class WhisperEngineTransl implements IWhisperEngine {
                 break;
         }
 
+        //debug(decoderOutputBuffer[0]);
+
         return result.toString();
     }
 
@@ -240,5 +242,29 @@ public class WhisperEngineTransl implements IWhisperEngine {
         }
 
         return maxIndex;
+    }
+
+    private int debug(float[][] decoderOutputBuffer) {
+        StringBuilder result = new StringBuilder();
+        Log.d(TAG, "...decoderOutputBuffer.len: " + decoderOutputBuffer.length);
+        Log.d(TAG, "...decoderOutputBuffer[0].len: " + decoderOutputBuffer[0].length);
+        for (int i = 0; i < decoderOutputBuffer.length; i++) {
+            int maxIndex = 0;
+            for (int j = 0; j < decoderOutputBuffer[i].length; j++) {
+                //System.out.println("decoderOutputBuffer[i][j]): " + i + " " + " " + j + " " + decoderOutputBuffer[i][j]);
+                if (decoderOutputBuffer[i][j] > decoderOutputBuffer[i][maxIndex]) {
+                    maxIndex = j;
+                }
+            }
+            Log.d(TAG, "i: " + i + ", max: " + maxIndex );
+            String word = mWhisperUtil.getWordFromToken(maxIndex);
+            if (word != null) {
+//                Log.i(TAG, "i: " + i + ", max: " + maxIndex + ", word: " + word);
+                result.append(word);
+            }
+        }
+        Log.i(TAG, "result: " + result);
+
+        return 0;
     }
 }

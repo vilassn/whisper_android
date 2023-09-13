@@ -26,14 +26,15 @@ public class Whisper {
     private final boolean mIsMultilingual;
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
-    // TODO: use WhisperEngine as per requirement
     private final IWhisperEngine mTranscribeEngineJava = new WhisperEngineJava();
     private final IWhisperEngine mTranscribeEngineNative = new WhisperEngineNative();
     private final IWhisperEngine mTranslateEngine = new WhisperEngineTransl();
 
+    // TODO: use WhisperEngine as per requirement
+    private final IWhisperEngine mWhisperEngine = mTranscribeEngineJava;
+
     private String mAction = null;
     private String mWavFilePath = null;
-    private IWhisperEngine mWhisperEngine = null;
     private Thread mExecutorThread = null;
     private IUpdateListener mUpdateListener = null;
 
@@ -64,13 +65,13 @@ public class Whisper {
             return;
         }
 
-        if (mAction.equals(ACTION_TRANSLATE)) {
-            mWhisperEngine = mTranslateEngine;
-        } else if (mAction.equals(ACTION_TRANSCRIBE_NATIVE)) {
-            mWhisperEngine = mTranscribeEngineNative;
-        } else { // ACTION_TRANSCRIBE_JAVA <= default action
-            mWhisperEngine = mTranscribeEngineJava;
-        }
+//        if (mAction.equals(ACTION_TRANSLATE)) {
+//            mWhisperEngine = mTranslateEngine;
+//        } else if (mAction.equals(ACTION_TRANSCRIBE_NATIVE)) {
+//            mWhisperEngine = mTranscribeEngineNative;
+//        } else { // ACTION_TRANSCRIBE_JAVA <= default action
+//            mWhisperEngine = mTranscribeEngineJava;
+//        }
 
         mExecutorThread = new Thread(() -> {
             mInProgress.set(true);

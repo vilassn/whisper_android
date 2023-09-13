@@ -1,5 +1,7 @@
 package com.whispertflite.engine;
 
+import android.util.Log;
+
 import com.whispertflite.asr.IUpdateListener;
 
 public class WhisperEngineNative implements IWhisperEngine {
@@ -16,8 +18,11 @@ public class WhisperEngineNative implements IWhisperEngine {
     @Override
     public boolean initialize(boolean multilingual, String vocabPath, String modelPath) {
         int ret = loadModel(modelPath, multilingual);
+        Log.d(TAG, "Model is loaded..." + modelPath);
+
         mIsInitialized = true;
-        return mIsInitialized;
+
+        return true;
     }
 
     public void updateStatus(String message) {

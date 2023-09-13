@@ -48,11 +48,11 @@ public class WhisperEngineJava implements IWhisperEngine {
     public boolean initialize(boolean multilingual, String vocabPath, String modelPath) throws IOException {
         // Load model
         loadModel(modelPath);
-        Log.d(TAG, "Model is loaded...!" + modelPath);
+        Log.d(TAG, "Model is loaded..." + modelPath);
 
         // Load filters and vocab
         mWhisper.loadFiltersAndVocab(multilingual, vocabPath);
-        Log.d(TAG, "Filters and Vocab are loaded...!");
+        Log.d(TAG, "Filters and Vocab are loaded..." + vocabPath);
 
         mIsInitialized = true;
 

@@ -135,7 +135,8 @@ public class MainActivity extends AppCompatActivity {
 
         // Multilingual model and vocab
         boolean isMultilingual = true;
-        String modelPath = getFilePath("whisper-tiny.tflite");
+//        String modelPath = getFilePath("whisper-tiny.tflite"); // Always Translate, ES -> EN
+        String modelPath = getFilePath("whisper-base.tflite"); // Always Transcribe ES -> EN
         String vocabPath = getFilePath("filters_vocab_multilingual.bin");
 
         // TODO: pass model and vocab as per requirement
@@ -242,8 +243,11 @@ public class MainActivity extends AppCompatActivity {
                 String[] assetFiles = assetManager.list("");
                 for (String assetFileName : assetFiles) {
                     if (assetFileName.endsWith("." + extension)) {
-                        InputStream inputStream = assetManager.open(assetFileName);
                         File outFile = new File(destFolder, assetFileName);
+                        if (outFile.exists())
+                            continue;
+
+                        InputStream inputStream = assetManager.open(assetFileName);
                         OutputStream outputStream = new FileOutputStream(outFile);
 
                         // Copy the file from assets to the data folder

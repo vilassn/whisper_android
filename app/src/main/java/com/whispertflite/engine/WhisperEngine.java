@@ -17,7 +17,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 
-public class WhisperEngineJava implements IWhisperEngine {
+public class WhisperEngine implements IWhisperEngine {
     private final String TAG = "WhisperEngineJava";
     private final WhisperUtil mWhisperUtil = new WhisperUtil();
 
@@ -45,7 +45,7 @@ public class WhisperEngineJava implements IWhisperEngine {
     }
 
     @Override
-    public boolean initialize(boolean multilingual, String vocabPath, String modelPath) throws IOException {
+    public boolean initialize(String modelPath, String vocabPath, boolean multilingual) throws IOException {
         // Load model
         loadModel(modelPath);
         Log.d(TAG, "Model is loaded..." + modelPath);

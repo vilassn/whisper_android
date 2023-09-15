@@ -31,7 +31,8 @@ import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
     private final String TAG = "MainActivity";
-    private Whisper mWhisper = null;
+    private Whisper mWhisperTransl = null;
+    private Whisper mWhisperTranscb = null;
     private Recorder mRecorder = null;
 
     @Override
@@ -64,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
                 stopRecording();
             }
 
-            if (mWhisper != null && mWhisper.isInProgress()) {
+            if (mWhisperTranscb != null && mWhisperTranscb.isInProgress()) {
                 Log.d(TAG, "Whisper is already in progress...!");
                 stopTranscription();
             } else {
@@ -82,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
                 stopRecording();
             }
 
-            if (mWhisper != null && mWhisper.isInProgress()) {
+            if (mWhisperTransl != null && mWhisperTransl.isInProgress()) {
                 Log.d(TAG, "Whisper is already in progress...!");
                 stopTranslation();
             } else {
@@ -128,6 +129,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+
+
         // English-only model and vocab
 //        boolean isMultilingual = false;
 //        String modelPath = getFilePath("whisper-tiny-en.tflite");
@@ -135,13 +138,14 @@ public class MainActivity extends AppCompatActivity {
 
         // Multilingual model and vocab
         boolean isMultilingual = true;
-//        String modelPath = getFilePath("whisper-tiny.tflite"); // Always Translate, ES -> EN
-        String modelPath = getFilePath("whisper-base.tflite"); // Always Transcribe ES -> EN
+        String modelPathTiny = getFilePath("whisper-tiny.tflite"); // Always Translate, ES -> EN
+        String modelPathBase = getFilePath("whisper-base.tflite"); // Always Transcribe ES -> EN
         String vocabPath = getFilePath("filters_vocab_multilingual.bin");
 
         // TODO: pass model and vocab as per requirement
-        mWhisper = new Whisper(this, modelPath, vocabPath, isMultilingual);
-        mWhisper.setUpdateListener((msgID, message) -> {
+        mWhisperTransl = new Whisper(this);
+        mWhisperTransl.loadModel(modelPathTiny, vocabPath, isMultilingual);
+        mWhisperTransl.setUpdateListener((msgID, message) -> {
             if (msgID == Whisper.MSG_ID_EVENT) {
                 Log.d(TAG, "Event is received, Message: " + message);
             } else if (msgID == Whisper.MSG_ID_RESULT) {
@@ -158,6 +162,28 @@ public class MainActivity extends AppCompatActivity {
 
             handler.post(() -> tvResult.setText(message));
         });
+
+        mWhisperTranscb = new Whisper(this);
+        mWhisperTranscb.loadModel(modelPathBase, vocabPath, isMultilingual);
+        mWhisperTranscb.setUpdateListener((msgID, message) -> {
+            if (msgID == Whisper.MSG_ID_EVENT) {
+                Log.d(TAG, "Event is received, Message: " + message);
+            } else if (msgID == Whisper.MSG_ID_RESULT) {
+                Log.d(TAG, "Result is received, Message: " + message);
+            }
+
+            if (message.equals(Whisper.MSG_LOADING_MODEL)) {
+                // write code as per need
+            } else if (message.equals(Whisper.MSG_PROCESSING)) {
+                // write code as per need
+            } else if (message.equals(Whisper.MSG_FILE_NOT_FOUND)) {
+                // write code as per need
+            }
+
+            handler.post(() -> tvResult.setText(message));
+        });
+
+
 
         mRecorder = new Recorder(this);
         mRecorder.setUpdateListener((msgID, message) -> {
@@ -223,24 +249,24 @@ public class MainActivity extends AppCompatActivity {
 
     // Transcription calls
     private void startTranscription(String waveFilePath) {
-        mWhisper.setFilePath(waveFilePath);
-        mWhisper.setAction(Whisper.ACTION_TRANSCRIBE_JAVA);
-        mWhisper.start();
+        mWhisperTranscb.setFilePath(waveFilePath);
+        mWhisperTranscb.setAction(Whisper.ACTION_TRANSCRIBE);
+        mWhisperTranscb.start();
     }
 
     private void stopTranscription() {
-        mWhisper.stop();
+        mWhisperTranscb.stop();
     }
 
     // Translation calls
     private void startTranslation(String waveFilePath) {
-        mWhisper.setFilePath(waveFilePath);
-        mWhisper.setAction(Whisper.ACTION_TRANSLATE);
-        mWhisper.start();
+        mWhisperTransl.setFilePath(waveFilePath);
+        mWhisperTransl.setAction(Whisper.ACTION_TRANSLATE);
+        mWhisperTransl.start();
     }
 
     private void stopTranslation() {
-        mWhisper.stop();
+        mWhisperTransl.stop();
     }
 
     // Copy assets to data folder
@@ -307,7 +333,9 @@ public class MainActivity extends AppCompatActivity {
 
         // Perform task for multiple audio files using multilingual model
         for (String fileName : fileNames) {
-            Whisper whisper = new Whisper(this, modelMultilingual, vocabMultilingual, true);
+            Whisper whisper = new Whisper(this);
+            whisper.setAction(Whisper.ACTION_TRANSCRIBE);
+            whisper.loadModel(modelMultilingual, vocabMultilingual, true);
             whisper.setUpdateListener((msgID, message) -> Log.d(TAG, message));
             String waveFilePath = getFilePath(fileName);
             whisper.setFilePath(waveFilePath);
@@ -320,7 +348,9 @@ public class MainActivity extends AppCompatActivity {
 
         // Perform task for multiple audio files using english only model
         for (String fileName : fileNames) {
-            Whisper whisper = new Whisper(this, modelEnglish, vocabEnglish, false);
+            Whisper whisper = new Whisper(this);
+            whisper.setAction(Whisper.ACTION_TRANSCRIBE);
+            whisper.loadModel(modelEnglish, vocabEnglish, false);
             whisper.setUpdateListener((msgID, message) -> Log.d(TAG, message));
             String waveFilePath = getFilePath(fileName);
             whisper.setFilePath(waveFilePath);

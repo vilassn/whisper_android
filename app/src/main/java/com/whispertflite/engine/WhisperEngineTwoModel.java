@@ -22,13 +22,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class WhisperEngineTransl implements IWhisperEngine {
+public class WhisperEngineTwoModel implements IWhisperEngine {
     private final String TAG = "WhisperEngineTransl";
     private final WhisperUtil mWhisperUtil = new WhisperUtil();
 
     private static final String SIGNATURE_KEY = "serving_default";
     private static final String WHISPER_ENCODER = "whisper-encoder-tiny.tflite";
     private static final String WHISPER_DECODER_LANGUAGE = "whisper-decoder-tiny.tflite";
+    private static final String WHISPER_VOCAB_MULTILINGUAL = "filters_vocab_multilingual.bin";
 
     private boolean mIsInitialized = false;
     private IOnUpdateListener mUpdateListener = null;
@@ -56,18 +57,21 @@ public class WhisperEngineTransl implements IWhisperEngine {
     }
 
     @Override
-    public boolean initialize(boolean multilingual, String vocabPath, String modelPath) throws IOException {
+    public boolean initialize(String modelPath, String vocabPath, boolean multilingual) throws IOException {
         // Load model
         String filesDir = new File(modelPath).getParent();
-        mInterpreterEncoder = loadModel(new File(filesDir, WHISPER_ENCODER).getAbsolutePath());
-        mInterpreterDecoder = loadModel(new File(filesDir, WHISPER_DECODER_LANGUAGE).getAbsolutePath());
+        String encoderModelPath = new File(filesDir, WHISPER_ENCODER).getAbsolutePath();
+        String decoderModelPath = new File(filesDir, WHISPER_DECODER_LANGUAGE).getAbsolutePath();
+        mInterpreterEncoder = loadModel(encoderModelPath);
+        mInterpreterDecoder = loadModel(decoderModelPath);
         Log.d(TAG, "Model is loaded..." + WHISPER_ENCODER + " " + WHISPER_DECODER_LANGUAGE);
 
         // Load filters and vocab
-        boolean ret = mWhisperUtil.loadFiltersAndVocab(multilingual, vocabPath);
+        String multilingualVocabPath = new File(filesDir, WHISPER_VOCAB_MULTILINGUAL).getAbsolutePath();
+        boolean ret = mWhisperUtil.loadFiltersAndVocab(multilingual, multilingualVocabPath);
         if (ret) {
             mIsInitialized = true;
-            Log.d(TAG, "Filters and Vocab are loaded..." + vocabPath);
+            Log.d(TAG, "Filters and Vocab are loaded..." + multilingualVocabPath);
         } else {
             mIsInitialized = false;
             Log.d(TAG, "Failed to load Filters and Vocab...");
@@ -130,7 +134,7 @@ public class WhisperEngineTransl implements IWhisperEngine {
 
         // TODO: set input audio language and action as per need
         int inputLang = 50262; // English 50259, Spanish 50262, Hindi 50276
-        return runDecoder(encoderOutput, inputLang, mWhisperUtil.getTokenTranslate());
+        return runDecoder(encoderOutput, inputLang, mWhisperUtil.getTokenTranscribe());
     }
 
     private ByteBuffer runEncoder(float[] inputBuffer) {

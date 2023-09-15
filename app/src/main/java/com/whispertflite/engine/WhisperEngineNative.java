@@ -16,7 +16,7 @@ public class WhisperEngineNative implements IWhisperEngine {
     }
 
     @Override
-    public boolean initialize(boolean multilingual, String vocabPath, String modelPath) {
+    public boolean initialize(String modelPath, String vocabPath, boolean multilingual) {
         int ret = loadModel(modelPath, multilingual);
         Log.d(TAG, "Model is loaded..." + modelPath);
 

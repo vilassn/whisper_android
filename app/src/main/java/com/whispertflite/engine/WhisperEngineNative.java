@@ -2,14 +2,14 @@ package com.whispertflite.engine;
 
 import android.util.Log;
 
-import com.whispertflite.asr.IUpdateListener;
+import com.whispertflite.asr.IOnUpdateListener;
 
 public class WhisperEngineNative implements IWhisperEngine {
     private final String TAG = "WhisperEngineNative";
     private final long nativePtr; // Native pointer to the TFLiteEngine instance
 
     private boolean mIsInitialized = false;
-    private IUpdateListener mUpdateListener = null;
+    private IOnUpdateListener mUpdateListener = null;
 
     public WhisperEngineNative() {
         nativePtr = createTFLiteEngine();
@@ -27,10 +27,10 @@ public class WhisperEngineNative implements IWhisperEngine {
 
     public void updateStatus(String message) {
         if (mUpdateListener != null)
-            mUpdateListener.onStatusChanged(message);
+            mUpdateListener.onUpdate(0, message);
     }
 
-    public void setUpdateListener(IUpdateListener listener) {
+    public void setUpdateListener(IOnUpdateListener listener) {
         mUpdateListener = listener;
     }
     @Override

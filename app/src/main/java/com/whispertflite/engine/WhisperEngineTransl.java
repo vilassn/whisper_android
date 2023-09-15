@@ -2,7 +2,7 @@ package com.whispertflite.engine;
 
 import android.util.Log;
 
-import com.whispertflite.asr.IUpdateListener;
+import com.whispertflite.asr.IOnUpdateListener;
 import com.whispertflite.utils.WaveUtil;
 import com.whispertflite.utils.WhisperUtil;
 
@@ -31,7 +31,7 @@ public class WhisperEngineTransl implements IWhisperEngine {
     private static final String WHISPER_DECODER_LANGUAGE = "whisper-decoder-tiny.tflite";
 
     private boolean mIsInitialized = false;
-    private IUpdateListener mUpdateListener = null;
+    private IOnUpdateListener mUpdateListener = null;
     private Interpreter mInterpreterEncoder = null;
     private Interpreter mInterpreterDecoder = null;
     private final AtomicBoolean mIsInterrupted = new AtomicBoolean(false);
@@ -48,10 +48,10 @@ public class WhisperEngineTransl implements IWhisperEngine {
 
     public void updateStatus(String message) {
         if (mUpdateListener != null)
-            mUpdateListener.onStatusChanged(message);
+            mUpdateListener.onUpdate(0, message);
     }
 
-    public void setUpdateListener(IUpdateListener listener) {
+    public void setUpdateListener(IOnUpdateListener listener) {
         mUpdateListener = listener;
     }
 
@@ -64,12 +64,16 @@ public class WhisperEngineTransl implements IWhisperEngine {
         Log.d(TAG, "Model is loaded..." + WHISPER_ENCODER + " " + WHISPER_DECODER_LANGUAGE);
 
         // Load filters and vocab
-        mWhisperUtil.loadFiltersAndVocab(multilingual, vocabPath);
-        Log.d(TAG, "Filters and Vocab are loaded..." + vocabPath);
+        boolean ret = mWhisperUtil.loadFiltersAndVocab(multilingual, vocabPath);
+        if (ret) {
+            mIsInitialized = true;
+            Log.d(TAG, "Filters and Vocab are loaded..." + vocabPath);
+        } else {
+            mIsInitialized = false;
+            Log.d(TAG, "Failed to load Filters and Vocab...");
+        }
 
-        mIsInitialized = true;
-
-        return true;
+        return mIsInitialized;
     }
 
     @Override
@@ -118,12 +122,7 @@ public class WhisperEngineTransl implements IWhisperEngine {
         System.arraycopy(samples, 0, inputSamples, 0, copyLength);
 
         int cores = Runtime.getRuntime().availableProcessors();
-        if (!mWhisperUtil.calculateMelSpectrogram(inputSamples, inputSamples.length,cores)) {
-            Log.d(TAG, "%s: failed to compute mel spectrogram");
-            return null;
-        }
-
-        return mWhisperUtil.getMelData();
+        return mWhisperUtil.getMelSpectrogram(inputSamples, inputSamples.length, cores);
     }
 
     private String runInference(float[] inputData) {
@@ -131,7 +130,7 @@ public class WhisperEngineTransl implements IWhisperEngine {
 
         // TODO: set input audio language and action as per need
         int inputLang = 50262; // English 50259, Spanish 50262, Hindi 50276
-        return runDecoder(encoderOutput, inputLang, WhisperUtil.TOKEN_TRANSLATE);
+        return runDecoder(encoderOutput, inputLang, mWhisperUtil.getTokenTranslate());
     }
 
     private ByteBuffer runEncoder(float[] inputBuffer) {

@@ -17,9 +17,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Recorder {
     public static final String TAG = "Recorder";
+    public static final int MSG_ID_EVENT = 'E';
+    public static final int MSG_ID_RESULT = 'R';
     public static final String ACTION_STOP = "Stop";
     public static final String ACTION_RECORD = "Record";
-    public static final String MSG_RECORDING = "Recording...";
+    public static final String MSG_RECORDING_PROGRESS = "Recording...";
     public static final String MSG_RECORDING_STARTED = "Recording is started..!";
     public static final String MSG_RECORDING_COMPLETED = "Recording is completed..!";
 
@@ -28,13 +30,13 @@ public class Recorder {
 
     private String mWavFilePath = null;
     private Thread mExecutorThread = null;
-    private IUpdateListener mUpdateListener = null;
+    private IOnUpdateListener mUpdateListener = null;
 
     public Recorder(Context context) {
         mContext = context;
     }
 
-    public void setUpdateListener(IUpdateListener listener) {
+    public void setUpdateListener(IOnUpdateListener listener) {
         mUpdateListener = listener;
     }
 
@@ -72,9 +74,9 @@ public class Recorder {
         return mInProgress.get();
     }
 
-    private void updateStatus(String message) {
+    private void updateStatus(int msgID, String message) {
         if (mUpdateListener != null)
-            mUpdateListener.onStatusChanged(message);
+            mUpdateListener.onUpdate(msgID, message);
     }
 
     private void threadFunction() {
@@ -84,7 +86,7 @@ public class Recorder {
                 return;
             }
 
-            updateStatus(MSG_RECORDING_STARTED);
+            updateStatus(MSG_ID_EVENT, MSG_RECORDING_STARTED);
 
             int channels = 1;
             int bytesPerSample = 2;
@@ -118,7 +120,7 @@ public class Recorder {
                 if (timer != timer_tmp) {
                     timer = timer_tmp;
 //                    Log.d(TAG, "updating timer: " + timer);
-                    updateStatus(MSG_RECORDING + timer + "s");
+                    updateStatus(MSG_ID_EVENT, MSG_RECORDING_PROGRESS + timer + "s");
                 }
             }
 
@@ -128,9 +130,10 @@ public class Recorder {
             WaveUtil.createWaveFile(mWavFilePath, byteBuffer.array(), sampleRateInHz, channels, bytesPerSample);
             Log.d(TAG, "Recorded file: " + mWavFilePath);
 
-            updateStatus(MSG_RECORDING_COMPLETED);
+            updateStatus(MSG_ID_EVENT, MSG_RECORDING_COMPLETED);
         } catch (Exception e) {
-            throw new RuntimeException("Writing of recorded audio failed", e);
+            Log.e(TAG, "Error...", e);
+            updateStatus(MSG_ID_EVENT, e.getMessage());
         }
     }
 }

@@ -19,21 +19,6 @@ import java.util.Map;
 public class WhisperUtil {
     private static final String TAG = "WhisperUtil";
 
-    // Token types
-    private int token_EOT = 50256; // end of transcript
-    private int token_SOT = 50257; // start of transcript
-    private int token_PREV = 50360;
-    private int token_SOLM = 50361; // ??
-    private int token_NOT = 50362; // no timestamps
-    private int token_BEG = 50363;
-
-    // Vocab types
-    private final int N_VOCAB_ENGLISH = 51864;       // for english only vocab
-    private final int N_VOCAB_MULTILINGUAL = 51865;  // for multilingual vocab
-
-    // Available tasks
-    public static final int TOKEN_TRANSLATE = 50358;
-    public static final int TOKEN_TRANSCRIBE = 50359;
     public static final int WHISPER_SAMPLE_RATE = 16000;
     public static final int WHISPER_N_FFT = 400;
     public static final int WHISPER_N_MEL = 80;
@@ -41,43 +26,41 @@ public class WhisperUtil {
     public static final int WHISPER_CHUNK_SIZE = 30;
     public static final int WHISPER_MEL_LEN = 3000;
 
-    public final int[] golden_generated_ids = {
-            50257, 50362, 1770, 13, 2264, 346, 353, 318,
-            262, 46329, 286, 262, 3504, 6097, 11, 290, 356, 389, 9675, 284, 7062
-    };
-
-    private WhisperVocab vocab = new WhisperVocab();
-    private WhisperFilter filters = new WhisperFilter();
-    private WhisperMel mel = new WhisperMel();
-
+    private final WhisperVocab vocab = new WhisperVocab();
+    private final WhisperFilter filters = new WhisperFilter();
+    private final WhisperMel mel = new WhisperMel();
 
     // Helper functions definitions
+    public int getTokenTranslate() {
+        return vocab.tokenTRANSLATE;
+    }
+
+    public int getTokenTranscribe() {
+        return vocab.tokenTRANSCRIBE;
+    }
+
     public int getTokenEOT() {
-        return token_EOT;
+        return vocab.tokenEOT;
     }
 
     public int getTokenSOT() {
-        return token_SOT;
+        return vocab.tokenSOT;
     }
 
     public int getTokenPREV() {
-        return token_PREV;
+        return vocab.tokenPREV;
     }
 
     public int getTokenSOLM() {
-        return token_SOLM;
+        return vocab.tokenSOLM;
     }
 
     public int getTokenNOT() {
-        return token_NOT;
+        return vocab.tokenNOT;
     }
 
     public int getTokenBEG() {
-        return token_BEG;
-    }
-
-    public float[] getMelData() {
-        return mel.data;
+        return vocab.tokenBEG;
     }
 
     public String getWordFromToken(int token) {
@@ -85,7 +68,7 @@ public class WhisperUtil {
     }
 
     // Load filters and vocab data from pre-generated filters_vocab_gen.bin file
-    public void loadFiltersAndVocab(boolean multilingual, String vocabPath) throws IOException {
+    public boolean loadFiltersAndVocab(boolean multilingual, String vocabPath) throws IOException {
 
         // Read vocab file
         byte[] bytes = Files.readAllBytes(Paths.get(vocabPath));
@@ -99,7 +82,7 @@ public class WhisperUtil {
             Log.d(TAG, "Magic number: " + magic);
         } else {
             Log.d(TAG, "Invalid vocab file (bad magic: " + magic + "), " + vocabPath);
-            return;
+            return false;
         }
 
         // Load mel filters
@@ -131,30 +114,30 @@ public class WhisperUtil {
         // Add additional vocab ids
         int nVocabAdditional;
         if (!multilingual) {
-            nVocabAdditional = N_VOCAB_ENGLISH;
+            nVocabAdditional = vocab.nVocabEnglish;
         } else {
-            nVocabAdditional = N_VOCAB_MULTILINGUAL;
-            token_EOT++;
-            token_SOT++;
-            token_PREV++;
-            token_SOLM++;
-            token_NOT++;
-            token_BEG++;
+            nVocabAdditional = vocab.nVocabMultilingual;
+            vocab.tokenEOT++;
+            vocab.tokenSOT++;
+            vocab.tokenPREV++;
+            vocab.tokenSOLM++;
+            vocab.tokenNOT++;
+            vocab.tokenBEG++;
         }
 
         for (int i = nVocab; i < nVocabAdditional; i++) {
             String word;
-            if (i > token_BEG) {
-                word = "[_TT_" + (i - token_BEG) + "]";
-            } else if (i == token_EOT) {
+            if (i > vocab.tokenBEG) {
+                word = "[_TT_" + (i - vocab.tokenBEG) + "]";
+            } else if (i == vocab.tokenEOT) {
                 word = "[_EOT_]";
-            } else if (i == token_SOT) {
+            } else if (i == vocab.tokenSOT) {
                 word = "[_SOT_]";
-            } else if (i == token_PREV) {
+            } else if (i == vocab.tokenPREV) {
                 word = "[_PREV_]";
-            } else if (i == token_NOT) {
+            } else if (i == vocab.tokenNOT) {
                 word = "[_NOT_]";
-            } else if (i == token_BEG) {
+            } else if (i == vocab.tokenBEG) {
                 word = "[_BEG_]";
             } else {
                 word = "[_extra_token_" + i + "]";
@@ -163,10 +146,12 @@ public class WhisperUtil {
             vocab.tokenToWord.put(i, word);
             //Log.d(TAG, "i= " + i + ", word= " + word);
         }
+
+        return true;
     }
 
     // nSamples size => WHISPER_SAMPLE_RATE * WHISPER_CHUNK_SIZE => 480000
-    public boolean calculateMelSpectrogram(float[] samples, int nSamples, int nThreads) {
+    public float[] getMelSpectrogram(float[] samples, int nSamples, int nThreads) {
 
         int fftSize = WHISPER_N_FFT;
         int fftStep = WHISPER_HOP_LENGTH;
@@ -275,7 +260,7 @@ public class WhisperUtil {
             mel.data[i] = (float) ((mel.data[i] + 4.0) / 4.0);
         }
 
-        return true;
+        return mel.data;
     }
 
     private void dft(float[] input, float[] output) {
@@ -341,7 +326,27 @@ public class WhisperUtil {
 
     // Helper class definitions
     private static class WhisperVocab {
-        private Map<Integer, String> tokenToWord = new HashMap<>();
+        int[] golden_generated_ids = {
+                50257, 50362, 1770, 13, 2264, 346, 353, 318,
+                262, 46329, 286, 262, 3504, 6097, 11, 290, 356, 389, 9675, 284, 7062
+        };
+
+        // Token types
+        int tokenEOT = 50256; // end of transcript
+        int tokenSOT = 50257; // start of transcript
+        int tokenPREV = 50360;
+        int tokenSOLM = 50361; // ??
+        int tokenNOT = 50362; // no timestamps
+        int tokenBEG = 50363;
+
+        // Available tasks
+        final int tokenTRANSLATE = 50358;
+        final int tokenTRANSCRIBE = 50359;
+
+        // Vocab types
+        final int nVocabEnglish = 51864;       // for english only vocab
+        final int nVocabMultilingual = 51865;  // for multilingual vocab
+        Map<Integer, String> tokenToWord = new HashMap<>();
     }
 
     private static class WhisperFilter {

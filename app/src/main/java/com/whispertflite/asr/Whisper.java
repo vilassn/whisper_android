@@ -16,6 +16,8 @@ public class Whisper {
     public static final String ACTION_TRANSLATE = "TRANSLATE";
     public static final String ACTION_TRANSCRIBE_JAVA = "TRANSCRIBE_JAVA";
     public static final String ACTION_TRANSCRIBE_NATIVE = "TRANSCRIBE_NATIVE";
+    public static final int MSG_ID_EVENT = 'E';
+    public static final int MSG_ID_RESULT = 'R';
     public static final String MSG_LOADING_MODEL = "Loading model and vocab...";
     public static final String MSG_PROCESSING = "Processing...";
     public static final String MSG_FILE_NOT_FOUND = "Input file doesn't exist..!";
@@ -36,7 +38,7 @@ public class Whisper {
     private String mAction = null;
     private String mWavFilePath = null;
     private Thread mExecutorThread = null;
-    private IUpdateListener mUpdateListener = null;
+    private IOnUpdateListener mUpdateListener = null;
 
     public Whisper(Context context, String modelPath, String vocabPath, boolean isMultilingual) {
         mContext = context;
@@ -45,7 +47,7 @@ public class Whisper {
         mIsMultilingual = isMultilingual;
     }
 
-    public void setUpdateListener(IUpdateListener listener) {
+    public void setUpdateListener(IOnUpdateListener listener) {
         mUpdateListener = listener;
         mTranscribeEngineJava.setUpdateListener(listener);
         mTranscribeEngineNative.setUpdateListener(listener);
@@ -86,6 +88,7 @@ public class Whisper {
         try {
             if (mExecutorThread != null) {
                 mWhisperEngine.interrupt();
+                //mExecutorThread.interrupt();
                 mExecutorThread.join();
                 mExecutorThread = null;
             }
@@ -98,16 +101,16 @@ public class Whisper {
         return mInProgress.get();
     }
 
-    private void updateStatus(String message) {
+    private void updateStatus(int msgID, String message) {
         if (mUpdateListener != null)
-            mUpdateListener.onStatusChanged(message);
+            mUpdateListener.onUpdate(msgID, message);
     }
 
     private void threadFunction() {
         try {
             // Initialize WhisperEngine
             if (!mWhisperEngine.isInitialized()) {
-                updateStatus(MSG_LOADING_MODEL);
+                updateStatus(MSG_ID_EVENT, MSG_LOADING_MODEL);
                 mWhisperEngine.initialize(mIsMultilingual, mVocabPath, mModelPath);
             }
 
@@ -118,13 +121,13 @@ public class Whisper {
                 File waveFile = new File(mWavFilePath);
                 if (waveFile.exists()) {
                     long startTime = System.currentTimeMillis();
-                    updateStatus(MSG_PROCESSING);
+                    updateStatus(MSG_ID_EVENT, MSG_PROCESSING);
 
                     // Get transcription from wav file
                     String result = mWhisperEngine.getTranscription(mWavFilePath);
 
                     // Display output result
-                    updateStatus(result);
+                    updateStatus(MSG_ID_RESULT, result);
                     Log.d(TAG, "Result len: " + result.length() + ", Result: " + result);
 
                     // Calculate time required for transcription
@@ -132,12 +135,12 @@ public class Whisper {
                     long timeTaken = endTime - startTime;
                     Log.d(TAG, "Time Taken for transcription: " + timeTaken + "ms");
                 } else {
-                    updateStatus(MSG_FILE_NOT_FOUND);
+                    updateStatus(MSG_ID_EVENT, MSG_FILE_NOT_FOUND);
                 }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error...", e);
-            updateStatus(e.getMessage());
+            updateStatus(MSG_ID_EVENT, e.getMessage());
         }
     }
 }

@@ -2,7 +2,7 @@ package com.whispertflite.engine;
 
 import android.util.Log;
 
-import com.whispertflite.asr.IUpdateListener;
+import com.whispertflite.asr.IOnUpdateListener;
 import com.whispertflite.utils.WaveUtil;
 import com.whispertflite.utils.WhisperUtil;
 
@@ -19,11 +19,11 @@ import java.nio.channels.FileChannel;
 
 public class WhisperEngineJava implements IWhisperEngine {
     private final String TAG = "WhisperEngineJava";
-    private final WhisperUtil mWhisper = new WhisperUtil();
+    private final WhisperUtil mWhisperUtil = new WhisperUtil();
 
     private boolean mIsInitialized = false;
     private Interpreter mInterpreter = null;
-    private IUpdateListener mUpdateListener = null;
+    private IOnUpdateListener mUpdateListener = null;
 
     @Override
     public boolean isInitialized() {
@@ -37,10 +37,10 @@ public class WhisperEngineJava implements IWhisperEngine {
 
     public void updateStatus(String message) {
         if (mUpdateListener != null)
-            mUpdateListener.onStatusChanged(message);
+            mUpdateListener.onUpdate(0, message);
     }
 
-    public void setUpdateListener(IUpdateListener listener) {
+    public void setUpdateListener(IOnUpdateListener listener) {
         mUpdateListener = listener;
     }
 
@@ -51,12 +51,16 @@ public class WhisperEngineJava implements IWhisperEngine {
         Log.d(TAG, "Model is loaded..." + modelPath);
 
         // Load filters and vocab
-        mWhisper.loadFiltersAndVocab(multilingual, vocabPath);
-        Log.d(TAG, "Filters and Vocab are loaded..." + vocabPath);
+        boolean ret = mWhisperUtil.loadFiltersAndVocab(multilingual, vocabPath);
+        if (ret) {
+            mIsInitialized = true;
+            Log.d(TAG, "Filters and Vocab are loaded..." + vocabPath);
+        } else {
+            mIsInitialized = false;
+            Log.d(TAG, "Failed to load Filters and Vocab...");
+        }
 
-        mIsInitialized = true;
-
-        return true;
+        return mIsInitialized;
     }
 
     @Override
@@ -98,12 +102,7 @@ public class WhisperEngineJava implements IWhisperEngine {
         System.arraycopy(samples, 0, inputSamples, 0, copyLength);
 
         int cores = Runtime.getRuntime().availableProcessors();
-        if (!mWhisper.calculateMelSpectrogram(inputSamples, inputSamples.length, cores)) {
-            Log.d(TAG, "%s: failed to compute mel spectrogram");
-            return null;
-        }
-
-        return mWhisper.getMelData();
+        return mWhisperUtil.getMelSpectrogram(inputSamples, inputSamples.length, cores);
     }
 
     private String runInference(float[] inputData) {
@@ -146,22 +145,22 @@ public class WhisperEngineJava implements IWhisperEngine {
         StringBuilder result = new StringBuilder();
         for (int i = 0; i < outputLen; i++) {
             int token = outputBuffer.getBuffer().getInt();
-            if (token == mWhisper.getTokenEOT())
+            if (token == mWhisperUtil.getTokenEOT())
                 break;
 
             // Get word for token and Skip additional token
-            if (token < mWhisper.getTokenEOT()) {
-                String word = mWhisper.getWordFromToken(token);
+            if (token < mWhisperUtil.getTokenEOT()) {
+                String word = mWhisperUtil.getWordFromToken(token);
                 Log.d(TAG, "Adding token: " + token + ", word: " + word);
                 result.append(word);
             } else {
-                if (token == WhisperUtil.TOKEN_TRANSCRIBE)
+                if (token == mWhisperUtil.getTokenTranscribe())
                     Log.d(TAG, "It is Transcription...");
 
-                if (token == WhisperUtil.TOKEN_TRANSLATE)
+                if (token == mWhisperUtil.getTokenTranslate())
                     Log.d(TAG, "It is Translation...");
 
-                String word = mWhisper.getWordFromToken(token);
+                String word = mWhisperUtil.getWordFromToken(token);
                 Log.d(TAG, "Skipping token: " + token + ", word: " + word);
             }
         }

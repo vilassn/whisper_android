@@ -141,7 +141,13 @@ public class MainActivity extends AppCompatActivity {
 
         // TODO: pass model and vocab as per requirement
         mWhisper = new Whisper(this, modelPath, vocabPath, isMultilingual);
-        mWhisper.setUpdateListener(message -> {
+        mWhisper.setUpdateListener((msgID, message) -> {
+            if (msgID == Whisper.MSG_ID_EVENT) {
+                Log.d(TAG, "Event is received, Message: " + message);
+            } else if (msgID == Whisper.MSG_ID_RESULT) {
+                Log.d(TAG, "Result is received, Message: " + message);
+            }
+
             if (message.equals(Whisper.MSG_LOADING_MODEL)) {
                 // write code as per need
             } else if (message.equals(Whisper.MSG_PROCESSING)) {
@@ -154,12 +160,18 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mRecorder = new Recorder(this);
-        mRecorder.setUpdateListener(message -> {
+        mRecorder.setUpdateListener((msgID, message) -> {
+            if (msgID == Recorder.MSG_ID_EVENT) {
+                Log.d(TAG, "Event is received, Message: " + message);
+            } else if (msgID == Recorder.MSG_ID_RESULT) {
+                Log.d(TAG, "Result is received, Message: " + message);
+            }
+
             if (message.equals(Recorder.MSG_RECORDING_STARTED)) {
                 handler.post(() -> btnMicRec.setText(Recorder.ACTION_STOP));
             } else if (message.equals(Recorder.MSG_RECORDING_COMPLETED)) {
                 handler.post(() -> btnMicRec.setText(Recorder.ACTION_RECORD));
-            } else if (message.equals(Recorder.MSG_RECORDING)) {
+            } else if (message.equals(Recorder.MSG_RECORDING_PROGRESS)) {
                 // write code as per requirement
             }
 
@@ -296,7 +308,7 @@ public class MainActivity extends AppCompatActivity {
         // Perform task for multiple audio files using multilingual model
         for (String fileName : fileNames) {
             Whisper whisper = new Whisper(this, modelMultilingual, vocabMultilingual, true);
-            whisper.setUpdateListener(message -> Log.d(TAG, message));
+            whisper.setUpdateListener((msgID, message) -> Log.d(TAG, message));
             String waveFilePath = getFilePath(fileName);
             whisper.setFilePath(waveFilePath);
             whisper.start();
@@ -309,7 +321,7 @@ public class MainActivity extends AppCompatActivity {
         // Perform task for multiple audio files using english only model
         for (String fileName : fileNames) {
             Whisper whisper = new Whisper(this, modelEnglish, vocabEnglish, false);
-            whisper.setUpdateListener(message -> Log.d(TAG, message));
+            whisper.setUpdateListener((msgID, message) -> Log.d(TAG, message));
             String waveFilePath = getFilePath(fileName);
             whisper.setFilePath(waveFilePath);
             whisper.start();

@@ -1,5 +1,4 @@
-# Whisper Android ASR App
-
+# Offline Speech Recognition App with OpenAI Whisper and TensorFlow Lite
 Whisper is an automatic speech recognition (ASR) system trained on a massive dataset of 680,000 hours of multilingual and multitask supervised data collected from the web. This Android app allows you to leverage the power of OpenAI's Whisper ASR on your Android device using the TFLite (TensorFlow Lite) framework.
 
 ## Integration Guide

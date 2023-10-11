@@ -1,4 +1,4 @@
-# Offline Speech Recognition App with OpenAI Whisper and TensorFlow Lite
+# Offline Speech Recognition with OpenAI Whisper and TensorFlow Lite
 Whisper is an automatic speech recognition (ASR) system trained on a massive dataset of 680,000 hours of multilingual and multitask supervised data collected from the web. This Android app allows you to leverage the power of OpenAI's Whisper ASR on your Android device using the TFLite (TensorFlow Lite) framework.
 
 ## Integration Guide
@@ -22,25 +22,25 @@ To use the `Whisper` class in your Android application, follow the steps below:
    - `Context context`: A valid Android `Context` object.
    - `String modelPath`: The path to the Whisper model file.
    - `String vocabPath`: The path to the vocabulary file.
-   - `boolean isMultilingual`: A flag indicating whether the engine supports multilingual capabilities.
+   - `boolean isMultilingual`: A flag indicating whether model and vocab supports multilingual capabilities.
 
    ```java
    Context context = ...; // Obtain a valid context
    String modelPath = ...; // Specify the model file path
    String vocabPath = ...; // Specify the vocabulary file path
-   boolean isMultilingual = ...; // Specify whether the engine is multilingual
+   boolean isMultilingual = ...; // Specify whether the model and vocab is multilingual
    Whisper whisper = new Whisper(context, modelPath, vocabPath, isMultilingual);
    ```
 
 2. **Update Status Listener:**
 
-   You can optionally set an update listener to receive status updates during the execution of Whisper tasks. Implement the `IUpdateListener` interface to handle status change callbacks.
+   You need to set an update listener to receive result and status updates during the execution of Whisper tasks. Implement the `IUpdateListener` interface to handle status change callbacks.
 
    ```java
    whisper.setUpdateListener(new IUpdateListener() {
        @Override
        public void onStatusChanged(String message) {
-           // Handle status change messages
+           // Handle status change messages or result
        }
    });
    ```
@@ -50,8 +50,7 @@ To use the `Whisper` class in your Android application, follow the steps below:
    Set the action you want to perform using the `setAction` method. Available actions are:
    
    - `ACTION_TRANSLATE`: Perform translation.
-   - `ACTION_TRANSCRIBE_NATIVE`: Perform transcription using the native engine.
-   - `ACTION_TRANSCRIBE_JAVA` (Default): Perform transcription using the Java engine.
+   - `ACTION_TRANSCRIBE` (Default): Perform transcription.
 
    ```java
    whisper.setAction(Whisper.ACTION_TRANSLATE); // Set the desired action
@@ -90,23 +89,6 @@ To use the `Whisper` class in your Android application, follow the steps below:
    boolean isExecuting = whisper.isInProgress();
    ```
 
-**Actions and Engines**
-
-The `Whisper` class provides different actions and engine implementations:
-
-- For transcription tasks, it offers both native and Java-based engines.
-- For translation tasks, it provides translation engine support.
-
-Select the desired action and engine by setting the action using `setAction`.
-
-**Status Updates**
-
-The `Whisper` class provides status updates during task execution through the registered update listener. Utilize this feature to display progress or messages to the user.
-
-**Error Handling**
-
-The class includes error handling to manage exceptions that may occur during engine initialization and task execution. Ensure proper exception handling in your application when using this class.
-
 **Sample Usage**
 
 Below is a sample code snippet demonstrating how to use the `Whisper` class:
@@ -115,13 +97,13 @@ Below is a sample code snippet demonstrating how to use the `Whisper` class:
 Context context = ...; // Obtain a valid context
 String modelPath = ...; // Specify the model file path
 String vocabPath = ...; // Specify the vocabulary file path
-boolean isMultilingual = ...; // Specify whether the engine is multilingual
+boolean isMultilingual = ...; // Specify whether the model and vocab is multilingual
 
 Whisper whisper = new Whisper(context, modelPath, vocabPath, isMultilingual);
 whisper.setUpdateListener(new IUpdateListener() {
     @Override
     public void onStatusChanged(String message) {
-        // Handle status change messages
+        // Handle status change messages or result
     }
 });
 whisper.setAction(Whisper.ACTION_TRANSLATE); // Set the desired action
@@ -214,19 +196,6 @@ The `Recorder` class uses the following configuration parameters for audio recor
 
 These parameters are suitable for many audio recording scenarios. You can modify these settings by adjusting the corresponding variables in the class if needed.
 
-**Permissions**
-
-Ensure that your Android application has the necessary permissions to record audio. The class checks for the `RECORD_AUDIO` permission before starting the recording. Make sure to request and handle this permission in your app's manifest and runtime permissions.
-
-**Status Updates**
-
-The `Recorder` class provides status updates during recording through the registered update listener. Use this feature to display progress or messages to the user.
-
-**Error Handling**
-
-The class includes error handling to handle various exceptions that may occur during audio recording and WAV file creation. Ensure proper exception handling in your application when using this class.
-
-**Sample Usage**
 
 Below is a sample code snippet demonstrating how to use the `Recorder` class:
 

@@ -135,6 +135,9 @@ whisper.stop();
 **Note**: Ensure that you have the necessary permissions, error handling, and file path management in your application when using the `Whisper` class.
 
 
+
+
+
 **User Documentation for Recorder Class**
 
 **Introduction**

@@ -13,31 +13,29 @@ import androidx.core.app.ActivityCompat;
 import com.whispertflite.utils.WaveUtil;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Recorder {
     public static final String TAG = "Recorder";
-    public static final int MSG_ID_EVENT = 'E';
-    public static final int MSG_ID_RESULT = 'R';
     public static final String ACTION_STOP = "Stop";
     public static final String ACTION_RECORD = "Record";
-    public static final String MSG_RECORDING_PROGRESS = "Recording...";
-    public static final String MSG_RECORDING_STARTED = "Recording is started..!";
-    public static final String MSG_RECORDING_COMPLETED = "Recording is completed..!";
+    public static final String MSG_RECORDING = "Recording...";
+    public static final String MSG_RECORDING_DONE = "Recording done...!";
 
     private final Context mContext;
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
     private String mWavFilePath = null;
     private Thread mExecutorThread = null;
-    private IOnUpdateListener mUpdateListener = null;
+    private IRecorderListener mListener = null;
 
     public Recorder(Context context) {
         mContext = context;
     }
 
-    public void setUpdateListener(IOnUpdateListener listener) {
-        mUpdateListener = listener;
+    public void setListener(IRecorderListener listener) {
+        mListener = listener;
     }
 
     public void setFilePath(String wavFile) {
@@ -74,9 +72,14 @@ public class Recorder {
         return mInProgress.get();
     }
 
-    private void updateStatus(int msgID, String message) {
-        if (mUpdateListener != null)
-            mUpdateListener.onUpdate(msgID, message);
+    private void sendUpdate(String message) {
+        if (mListener != null)
+            mListener.onUpdateReceived(message);
+    }
+
+    private void sendData(float[] samples) {
+        if (mListener != null)
+            mListener.onDataReceived(samples);
     }
 
     private void threadFunction() {
@@ -86,7 +89,7 @@ public class Recorder {
                 return;
             }
 
-            updateStatus(MSG_ID_EVENT, MSG_RECORDING_STARTED);
+            sendUpdate(MSG_RECORDING);
 
             int channels = 1;
             int bytesPerSample = 2;
@@ -101,39 +104,64 @@ public class Recorder {
 
             int bufferSize1Sec = sampleRateInHz * bytesPerSample * channels;
             int bufferSize30Sec = bufferSize1Sec * 30;
-            ByteBuffer byteBuffer = ByteBuffer.allocateDirect(bufferSize30Sec);
+            ByteBuffer buffer30Sec = ByteBuffer.allocateDirect(bufferSize30Sec);
+            ByteBuffer bufferRealtime = ByteBuffer.allocateDirect(bufferSize1Sec * 5);
 
             int timer = 0;
             int totalBytesRead = 0;
-            byte[] buffer = new byte[bufferSize];
+            byte[] audioData = new byte[bufferSize];
             while (mInProgress.get() && (totalBytesRead < bufferSize30Sec)) {
-                int bytesRead = audioRecord.read(buffer, 0, bufferSize);
+                sendUpdate(MSG_RECORDING + timer + "s");
+
+                int bytesRead = audioRecord.read(audioData, 0, bufferSize);
                 if (bytesRead > 0) {
-                    byteBuffer.put(buffer, 0, bytesRead);
+                    buffer30Sec.put(audioData, 0, bytesRead);
+                    bufferRealtime.put(audioData, 0, bytesRead);
                 } else {
                     Log.d(TAG, "AudioRecord error, bytes read: " + bytesRead);
                     break;
                 }
 
+                // Update timer after every second
                 totalBytesRead = totalBytesRead + bytesRead;
                 int timer_tmp = totalBytesRead / bufferSize1Sec;
                 if (timer != timer_tmp) {
                     timer = timer_tmp;
-//                    Log.d(TAG, "updating timer: " + timer);
-                    updateStatus(MSG_ID_EVENT, MSG_RECORDING_PROGRESS + timer + "s");
+
+                    // Transcribe realtime buffer after every 3 seconds
+                    if (timer % 3 == 0) {
+                        // Flip the buffer for reading
+                        bufferRealtime.flip();
+                        bufferRealtime.order(ByteOrder.nativeOrder());
+
+                        // Create a sample array to hold the converted data
+                        float[] samples = new float[bufferRealtime.remaining() / 2];
+
+                        // Convert ByteBuffer to short array
+                        for (int i = 0; i < samples.length; i++) {
+                            samples[i] = (float) (bufferRealtime.getShort() / 32768.0);
+                        }
+
+                        // Reset the ByteBuffer for writing again
+                        bufferRealtime.clear();
+
+                        // Send samples for transcription
+                        sendData(samples);
+                    }
                 }
             }
 
             audioRecord.stop();
             audioRecord.release();
 
-            WaveUtil.createWaveFile(mWavFilePath, byteBuffer.array(), sampleRateInHz, channels, bytesPerSample);
+            // Save 30 seconds of recording buffer in wav file
+            WaveUtil.createWaveFile(mWavFilePath, buffer30Sec.array(), sampleRateInHz, channels, bytesPerSample);
             Log.d(TAG, "Recorded file: " + mWavFilePath);
 
-            updateStatus(MSG_ID_EVENT, MSG_RECORDING_COMPLETED);
+            sendUpdate(MSG_RECORDING_DONE);
         } catch (Exception e) {
             Log.e(TAG, "Error...", e);
-            updateStatus(MSG_ID_EVENT, e.getMessage());
+            sendUpdate(e.getMessage());
         }
     }
 }

@@ -18,6 +18,8 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
+import com.whispertflite.asr.IRecorderListener;
+import com.whispertflite.asr.IWhisperListener;
 import com.whispertflite.utils.WaveUtil;
 import com.whispertflite.asr.Recorder;
 import com.whispertflite.asr.Whisper;
@@ -42,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
         final String[] waveFileName = {null};
         final Handler handler = new Handler(Looper.getMainLooper());
 
+        TextView tvStatus = findViewById(R.id.tvStatus);
         TextView tvResult = findViewById(R.id.tvResult);
 
         // Implementation of record button functionality
@@ -126,41 +129,46 @@ public class MainActivity extends AppCompatActivity {
 
         mWhisper = new Whisper(this);
         mWhisper.loadModel(modelPath, vocabPath, isMultilingual);
-        mWhisper.setUpdateListener((msgID, message) -> {
-            if (msgID == Whisper.MSG_ID_EVENT) {
-                Log.d(TAG, "Event is received, Message: " + message);
-            } else if (msgID == Whisper.MSG_ID_RESULT) {
-                Log.d(TAG, "Result is received, Message: " + message);
+        mWhisper.setListener(new IWhisperListener() {
+            @Override
+            public void onUpdateReceived(String message) {
+                Log.d(TAG, "Update is received, Message: " + message);
+                handler.post(() -> tvStatus.setText(message));
+
+                if (message.equals(Whisper.MSG_PROCESSING)) {
+                    handler.post(() -> tvResult.setText(""));
+                } else if (message.equals(Whisper.MSG_FILE_NOT_FOUND)) {
+                    // write code as per need to handled this error
+                    Log.d(TAG, "File not found error...!");
+                }
             }
 
-            if (message.equals(Whisper.MSG_LOADING_MODEL)) {
-                // write code as per need
-            } else if (message.equals(Whisper.MSG_PROCESSING)) {
-                // write code as per need
-            } else if (message.equals(Whisper.MSG_FILE_NOT_FOUND)) {
-                // write code as per need
+            @Override
+            public void onResultReceived(String result) {
+                Log.d(TAG, "Result: " + result);
+                handler.post(() -> tvResult.append(result));
             }
-
-            handler.post(() -> tvResult.setText(message));
         });
 
         mRecorder = new Recorder(this);
-        mRecorder.setUpdateListener((msgID, message) -> {
-            if (msgID == Recorder.MSG_ID_EVENT) {
-                Log.d(TAG, "Event is received, Message: " + message);
-            } else if (msgID == Recorder.MSG_ID_RESULT) {
-                Log.d(TAG, "Result is received, Message: " + message);
+        mRecorder.setListener(new IRecorderListener() {
+            @Override
+            public void onUpdateReceived(String message) {
+                Log.d(TAG, "Update is received, Message: " + message);
+                handler.post(() -> tvStatus.setText(message));
+
+                if (message.equals(Recorder.MSG_RECORDING)) {
+                    handler.post(() -> tvResult.setText(""));
+                    handler.post(() -> btnMicRec.setText(Recorder.ACTION_STOP));
+                } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
+                    handler.post(() -> btnMicRec.setText(Recorder.ACTION_RECORD));
+                }
             }
 
-            if (message.equals(Recorder.MSG_RECORDING_STARTED)) {
-                handler.post(() -> btnMicRec.setText(Recorder.ACTION_STOP));
-            } else if (message.equals(Recorder.MSG_RECORDING_COMPLETED)) {
-                handler.post(() -> btnMicRec.setText(Recorder.ACTION_RECORD));
-            } else if (message.equals(Recorder.MSG_RECORDING_PROGRESS)) {
-                // write code as per requirement
+            @Override
+            public void onDataReceived(float[] samples) {
+                mWhisper.writeBuffer(samples);
             }
-
-            handler.post(() -> tvResult.setText(message));
         });
 
         // Assume this Activity is the current activity, check record permission
@@ -280,7 +288,7 @@ public class MainActivity extends AppCompatActivity {
             Whisper whisper = new Whisper(this);
             whisper.setAction(Whisper.ACTION_TRANSCRIBE);
             whisper.loadModel(modelMultilingual, vocabMultilingual, true);
-            whisper.setUpdateListener((msgID, message) -> Log.d(TAG, message));
+            //whisper.setListener((msgID, message) -> Log.d(TAG, message));
             String waveFilePath = getFilePath(fileName);
             whisper.setFilePath(waveFilePath);
             whisper.start();
@@ -295,7 +303,7 @@ public class MainActivity extends AppCompatActivity {
             Whisper whisper = new Whisper(this);
             whisper.setAction(Whisper.ACTION_TRANSCRIBE);
             whisper.loadModel(modelEnglish, vocabEnglish, false);
-            whisper.setUpdateListener((msgID, message) -> Log.d(TAG, message));
+            //whisper.setListener((msgID, message) -> Log.d(TAG, message));
             String waveFilePath = getFilePath(fileName);
             whisper.setFilePath(waveFilePath);
             whisper.start();

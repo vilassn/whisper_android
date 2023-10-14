@@ -12,7 +12,7 @@
 #include "TFLiteEngine.h"
 #include "input_features.h"
 #include "filters_vocab_multilingual.h"
-#include "filters_vocab_gen.h"
+#include "filters_vocab_en.h"
 #include "whisper.h"
 #include "wav_util.h"
 
@@ -39,7 +39,7 @@ int TFLiteEngine:: loadModel(const char *modelPath, const bool isMultilingual) {
         if (isMultilingual)
             vocabData = reinterpret_cast<const char*>(filters_vocab_multilingual);
         else
-            vocabData = reinterpret_cast<const char*>(filters_vocab_gen);
+            vocabData = reinterpret_cast<const char*>(filters_vocab_en);
 
         // Read the magic number
         int magic = 0;

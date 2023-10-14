@@ -2,40 +2,22 @@ package com.whispertflite.engine;
 
 import android.util.Log;
 
-import com.whispertflite.asr.IOnUpdateListener;
+import com.whispertflite.asr.IWhisperListener;
 
 public class WhisperEngineNative implements IWhisperEngine {
     private final String TAG = "WhisperEngineNative";
     private final long nativePtr; // Native pointer to the TFLiteEngine instance
 
     private boolean mIsInitialized = false;
-    private IOnUpdateListener mUpdateListener = null;
+    private IWhisperListener mUpdateListener = null;
 
     public WhisperEngineNative() {
         nativePtr = createTFLiteEngine();
     }
 
     @Override
-    public boolean initialize(String modelPath, String vocabPath, boolean multilingual) {
-        int ret = loadModel(modelPath, multilingual);
-        Log.d(TAG, "Model is loaded..." + modelPath);
-
-        mIsInitialized = true;
-
-        return true;
-    }
-
-    public void updateStatus(String message) {
-        if (mUpdateListener != null)
-            mUpdateListener.onUpdate(0, message);
-    }
-
-    public void setUpdateListener(IOnUpdateListener listener) {
+    public void setUpdateListener(IWhisperListener listener) {
         mUpdateListener = listener;
-    }
-    @Override
-    public String getTranscription(String wavePath) {
-        return transcribeFile(wavePath);
     }
 
     @Override
@@ -44,10 +26,41 @@ public class WhisperEngineNative implements IWhisperEngine {
     }
 
     @Override
+    public boolean initialize(String modelPath, String vocabPath, boolean multilingual) {
+        int ret = loadModel(modelPath, multilingual);
+        Log.d(TAG, "Model is loaded..." + modelPath);
+
+        mIsInitialized = true;
+        return true;
+    }
+
+    @Override
+    public String transcribeBuffer(float[] samples) {
+        return transcribeBuffer(nativePtr, samples);
+    }
+
+    @Override
+    public String transcribeFile(String waveFile) {
+        return transcribeFile(nativePtr, waveFile);
+    }
+
+    @Override
     public void interrupt() {
 
     }
 
+    public void updateStatus(String message) {
+        if (mUpdateListener != null)
+            mUpdateListener.onUpdateReceived(message);
+    }
+
+    private int loadModel(String modelPath, boolean isMultilingual) {
+        return loadModel(nativePtr, modelPath, isMultilingual);
+    }
+
+    private void freeModel() {
+        freeModel(nativePtr);
+    }
 
     static {
         System.loadLibrary("audioEngine");
@@ -55,28 +68,8 @@ public class WhisperEngineNative implements IWhisperEngine {
 
     // Native methods
     private native long createTFLiteEngine();
-
     private native int loadModel(long nativePtr, String modelPath, boolean isMultilingual);
-
     private native void freeModel(long nativePtr);
-
     private native String transcribeBuffer(long nativePtr, float[] samples);
-
     private native String transcribeFile(long nativePtr, String waveFile);
-
-    private int loadModel(String modelPath, boolean isMultilingual) {
-        return loadModel(nativePtr, modelPath, isMultilingual);
-    }
-
-    public String transcribeBuffer(float[] samples) {
-        return transcribeBuffer(nativePtr, samples);
-    }
-
-    public String transcribeFile(String waveFile) {
-        return transcribeFile(nativePtr, waveFile);
-    }
-
-    public void freeModel() {
-        freeModel(nativePtr);
-    }
 }

@@ -2,7 +2,7 @@ package com.whispertflite.engine;
 
 import android.util.Log;
 
-import com.whispertflite.asr.IOnUpdateListener;
+import com.whispertflite.asr.IWhisperListener;
 import com.whispertflite.utils.WaveUtil;
 import com.whispertflite.utils.WhisperUtil;
 
@@ -23,7 +23,7 @@ public class WhisperEngine implements IWhisperEngine {
 
     private boolean mIsInitialized = false;
     private Interpreter mInterpreter = null;
-    private IOnUpdateListener mUpdateListener = null;
+    private IWhisperListener mUpdateListener = null;
 
     @Override
     public boolean isInitialized() {
@@ -37,10 +37,10 @@ public class WhisperEngine implements IWhisperEngine {
 
     public void updateStatus(String message) {
         if (mUpdateListener != null)
-            mUpdateListener.onUpdate(0, message);
+            mUpdateListener.onUpdateReceived(message);
     }
 
-    public void setUpdateListener(IOnUpdateListener listener) {
+    public void setUpdateListener(IWhisperListener listener) {
         mUpdateListener = listener;
     }
 
@@ -64,7 +64,7 @@ public class WhisperEngine implements IWhisperEngine {
     }
 
     @Override
-    public String getTranscription(String wavePath) {
+    public String transcribeFile(String wavePath) {
         // Calculate Mel spectrogram
         Log.d(TAG, "Calculating Mel spectrogram...");
         float[] melSpectrogram = getMelSpectrogram(wavePath);
@@ -75,6 +75,11 @@ public class WhisperEngine implements IWhisperEngine {
         Log.d(TAG, "Inference is executed...!");
 
         return result;
+    }
+
+    @Override
+    public String transcribeBuffer(float[] samples) {
+        return null;
     }
 
     // Load TFLite model

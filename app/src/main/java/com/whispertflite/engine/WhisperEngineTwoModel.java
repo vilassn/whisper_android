@@ -2,7 +2,7 @@ package com.whispertflite.engine;
 
 import android.util.Log;
 
-import com.whispertflite.asr.IOnUpdateListener;
+import com.whispertflite.asr.IWhisperListener;
 import com.whispertflite.utils.WaveUtil;
 import com.whispertflite.utils.WhisperUtil;
 
@@ -32,7 +32,7 @@ public class WhisperEngineTwoModel implements IWhisperEngine {
     private static final String WHISPER_VOCAB_MULTILINGUAL = "filters_vocab_multilingual.bin";
 
     private boolean mIsInitialized = false;
-    private IOnUpdateListener mUpdateListener = null;
+    private IWhisperListener mUpdateListener = null;
     private Interpreter mInterpreterEncoder = null;
     private Interpreter mInterpreterDecoder = null;
     private final AtomicBoolean mIsInterrupted = new AtomicBoolean(false);
@@ -49,10 +49,10 @@ public class WhisperEngineTwoModel implements IWhisperEngine {
 
     public void updateStatus(String message) {
         if (mUpdateListener != null)
-            mUpdateListener.onUpdate(0, message);
+            mUpdateListener.onUpdateReceived(message);
     }
 
-    public void setUpdateListener(IOnUpdateListener listener) {
+    public void setUpdateListener(IWhisperListener listener) {
         mUpdateListener = listener;
     }
 
@@ -81,7 +81,7 @@ public class WhisperEngineTwoModel implements IWhisperEngine {
     }
 
     @Override
-    public String getTranscription(String wavePath) {
+    public String transcribeFile(String wavePath) {
         // Set interrupted false ast beginning
         mIsInterrupted.set(false);
 
@@ -95,6 +95,11 @@ public class WhisperEngineTwoModel implements IWhisperEngine {
         Log.d(TAG, "Inference is executed...!");
 
         return result;
+    }
+
+    @Override
+    public String transcribeBuffer(float[] samples) {
+        return null;
     }
 
     // Load TFLite model

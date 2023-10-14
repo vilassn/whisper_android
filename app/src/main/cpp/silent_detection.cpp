@@ -6,7 +6,7 @@
 int main() {
     //const char* filename = "MicInput_16000_mono_float.pcm";
 	const char* filename = "english_test_3_bili_16000_mono_float.pcm";
-	const char* outputPcmFile = "output.pcm";
+	const char* outputPcmFile = "english_test_3_bili_16000_mono_float_silence_removed.pcm";
 
     // Open the WAV file
     std::ifstream file(filename, std::ios::binary);

@@ -129,7 +129,9 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
+        // Call the method to copy specific file types from assets to data folder
+        String[] extensionsToCopy = {"pcm", "bin", "wav", "tflite"};
+        copyAssetsWithExtensionsToDataFolder(this, extensionsToCopy);
 
         // English-only model and vocab
 //        boolean isMultilingual = false;
@@ -203,10 +205,6 @@ public class MainActivity extends AppCompatActivity {
 
             handler.post(() -> tvResult.setText(message));
         });
-
-        // Call the method to copy specific file types from assets to data folder
-        String[] extensionsToCopy = {"pcm", "bin", "wav", "tflite"};
-        copyAssetsWithExtensionsToDataFolder(this, extensionsToCopy);
 
         // Assume this Activity is the current activity, check record permission
         checkRecordPermission();

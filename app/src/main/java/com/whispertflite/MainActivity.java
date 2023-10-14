@@ -31,8 +31,7 @@ import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
     private final String TAG = "MainActivity";
-    private Whisper mWhisperTransl = null;
-    private Whisper mWhisperTranscb = null;
+    private Whisper mWhisper = null;
     private Recorder mRecorder = null;
 
     @Override
@@ -65,31 +64,13 @@ public class MainActivity extends AppCompatActivity {
                 stopRecording();
             }
 
-            if (mWhisperTranscb != null && mWhisperTranscb.isInProgress()) {
+            if (mWhisper != null && mWhisper.isInProgress()) {
                 Log.d(TAG, "Whisper is already in progress...!");
                 stopTranscription();
             } else {
                 Log.d(TAG, "Start transcription...");
                 String waveFilePath = getFilePath(waveFileName[0]);
                 startTranscription(waveFilePath);
-            }
-        });
-
-        // Implementation of translate button functionality
-        Button btnTransl = findViewById(R.id.btnTransl);
-        btnTransl.setOnClickListener(v -> {
-            if (mRecorder != null && mRecorder.isInProgress()) {
-                Log.d(TAG, "Recording is in progress... stopping...");
-                stopRecording();
-            }
-
-            if (mWhisperTransl != null && mWhisperTransl.isInProgress()) {
-                Log.d(TAG, "Whisper is already in progress...!");
-                stopTranslation();
-            } else {
-                Log.d(TAG, "Start translation...");
-                String waveFilePath = getFilePath(waveFileName[0]);
-                startTranslation(waveFilePath);
             }
         });
 
@@ -136,18 +117,16 @@ public class MainActivity extends AppCompatActivity {
         // English-only model and vocab
 //        boolean isMultilingual = false;
 //        String modelPath = getFilePath("whisper-tiny-en.tflite");
-//        String vocabPath = getFilePath("filters_vocab_gen.bin");
+//        String vocabPath = getFilePath("filters_vocab_en.bin");
 
         // Multilingual model and vocab
         boolean isMultilingual = true;
-        String modelPathTiny = getFilePath("whisper-tiny.tflite"); // Always Translate, ES -> EN
-        String modelPathBase = getFilePath("whisper-base.tflite"); // Always Transcribe ES -> EN
+        String modelPath = getFilePath("whisper-tiny.tflite");
         String vocabPath = getFilePath("filters_vocab_multilingual.bin");
 
-        // TODO: pass model and vocab as per requirement
-        mWhisperTransl = new Whisper(this);
-        mWhisperTransl.loadModel(modelPathTiny, vocabPath, isMultilingual);
-        mWhisperTransl.setUpdateListener((msgID, message) -> {
+        mWhisper = new Whisper(this);
+        mWhisper.loadModel(modelPath, vocabPath, isMultilingual);
+        mWhisper.setUpdateListener((msgID, message) -> {
             if (msgID == Whisper.MSG_ID_EVENT) {
                 Log.d(TAG, "Event is received, Message: " + message);
             } else if (msgID == Whisper.MSG_ID_RESULT) {
@@ -164,28 +143,6 @@ public class MainActivity extends AppCompatActivity {
 
             handler.post(() -> tvResult.setText(message));
         });
-
-        mWhisperTranscb = new Whisper(this);
-        mWhisperTranscb.loadModel(modelPathBase, vocabPath, isMultilingual);
-        mWhisperTranscb.setUpdateListener((msgID, message) -> {
-            if (msgID == Whisper.MSG_ID_EVENT) {
-                Log.d(TAG, "Event is received, Message: " + message);
-            } else if (msgID == Whisper.MSG_ID_RESULT) {
-                Log.d(TAG, "Result is received, Message: " + message);
-            }
-
-            if (message.equals(Whisper.MSG_LOADING_MODEL)) {
-                // write code as per need
-            } else if (message.equals(Whisper.MSG_PROCESSING)) {
-                // write code as per need
-            } else if (message.equals(Whisper.MSG_FILE_NOT_FOUND)) {
-                // write code as per need
-            }
-
-            handler.post(() -> tvResult.setText(message));
-        });
-
-
 
         mRecorder = new Recorder(this);
         mRecorder.setUpdateListener((msgID, message) -> {
@@ -247,24 +204,13 @@ public class MainActivity extends AppCompatActivity {
 
     // Transcription calls
     private void startTranscription(String waveFilePath) {
-        mWhisperTranscb.setFilePath(waveFilePath);
-        mWhisperTranscb.setAction(Whisper.ACTION_TRANSCRIBE);
-        mWhisperTranscb.start();
+        mWhisper.setFilePath(waveFilePath);
+        mWhisper.setAction(Whisper.ACTION_TRANSCRIBE);
+        mWhisper.start();
     }
 
     private void stopTranscription() {
-        mWhisperTranscb.stop();
-    }
-
-    // Translation calls
-    private void startTranslation(String waveFilePath) {
-        mWhisperTransl.setFilePath(waveFilePath);
-        mWhisperTransl.setAction(Whisper.ACTION_TRANSLATE);
-        mWhisperTransl.start();
-    }
-
-    private void stopTranslation() {
-        mWhisperTransl.stop();
+        mWhisper.stop();
     }
 
     // Copy assets to data folder
@@ -342,7 +288,7 @@ public class MainActivity extends AppCompatActivity {
 
         // English-only model and vocab
         String modelEnglish = getFilePath("whisper-tiny-en.tflite");
-        String vocabEnglish = getFilePath("filters_vocab_gen.bin");
+        String vocabEnglish = getFilePath("filters_vocab_en.bin");
 
         // Perform task for multiple audio files using english only model
         for (String fileName : fileNames) {

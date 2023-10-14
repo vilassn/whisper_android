@@ -52,7 +52,8 @@
             android:layout_marginTop="16dp"
             android:layout_toEndOf="@+id/btnTranscb"
             android:background="@drawable/rounded_button_background"
-            android:text="@string/translate" />
+            android:text="@string/translate"
+            android:visibility="invisible" />
     </LinearLayout>
 
     <ScrollView

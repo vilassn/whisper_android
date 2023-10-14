@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
   struct timeval start_time,end_time;
   std::string word;
   int32_t n_vocab = 0;
-  std::string fname = "./filters_vocab_gen.bin";
+  std::string fname = "./filters_vocab_en.bin";
   auto fin = std::ifstream(fname, std::ios::binary);
   {
     uint32_t magic=0;

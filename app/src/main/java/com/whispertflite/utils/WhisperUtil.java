@@ -68,7 +68,7 @@ public class WhisperUtil {
         return vocab.tokenToWord.get(token);
     }
 
-    // Load filters and vocab data from pre-generated filters_vocab_gen.bin file
+    // Load filters and vocab data from pre-generated filters_vocab_en.bin file
     public boolean loadFiltersAndVocab(boolean multilingual, String vocabPath) throws IOException {
 
         // Read vocab file

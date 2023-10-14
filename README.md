@@ -1,216 +1,98 @@
 
 # Offline Speech Recognition with OpenAI Whisper and TensorFlow Lite
 
-Welcome to the documentation for integrating the Whisper ASR (Automatic Speech Recognition) system and Recorder into your Android applications. This guide will provide you with detailed instructions on how to integrate and utilize the Whisper ASR system and Recorder for audio recording.
+This guide explains how to integrate Whisper and Recorder class in Android apps for audio recording and speech recognition.
 
 ## Whisper ASR Integration Guide
 
-### User Documentation for Whisper Class
+Here are separate code snippets for using `Whisper` and `Recorder`:
 
-#### Introduction
+### Whisper (Speech Recognition)
 
-The `Whisper` class is a utility class designed to interact with the Whisper ASR (Automatic Speech Recognition) engine for transcription and translation of audio data. This class provides a high-level interface to perform transcription and translation tasks using the Whisper engine.
-
-#### Usage
-
-To use the `Whisper` class in your Android application, follow these steps:
-
-1. **Initialization:**
-
-   Create an instance of the `Whisper` class by passing the required parameters to the constructor:
-
-   - `Context context`: A valid Android `Context` object.
-   - `String modelPath`: The path to the Whisper model file.
-   - `String vocabPath`: The path to the vocabulary file.
-   - `boolean isMultilingual`: A flag indicating whether the model and vocabulary support multilingual capabilities.
-
-   ```java
-   Context context = ...; // Obtain a valid context
-   String modelPath = ...; // Specify the model file path
-   String vocabPath = ...; // Specify the vocabulary file path
-   boolean isMultilingual = ...; // Specify whether the model and vocab are multilingual
-   Whisper whisper = new Whisper(context, modelPath, vocabPath, isMultilingual);
-   ```
-
-2. **Update Status Listener:**
-
-   Set an update listener to receive result and status updates during the execution of Whisper tasks. Implement the `IUpdateListener` interface to handle status change callbacks.
-
-   ```java
-   whisper.setUpdateListener(new IUpdateListener() {
-       @Override
-       public void onStatusChanged(String message) {
-           // Handle status change messages or results
-       }
-   });
-   ```
-
-3. **Setting Action:**
-
-   Set the action you want to perform using the `setAction` method. Available actions are:
-   
-   - `ACTION_TRANSLATE`: Perform translation.
-   - `ACTION_TRANSCRIBE` (Default): Perform transcription.
-
-   ```java
-   whisper.setAction(Whisper.ACTION_TRANSLATE); // Set the desired action
-   ```
-
-4. **Setting File Path:**
-
-   Set the path to the audio WAV file you want to process using the `setFilePath` method. Ensure that you have appropriate permissions to access the specified file.
-
-   ```java
-   String wavFilePath = ...; // Specify the audio WAV file path
-   whisper.setFilePath(wavFilePath);
-   ```
-
-5. **Starting Execution:**
-
-   To start the execution of the chosen action, call the `start` method. The execution process will continue until it is manually stopped using the `stop` method.
-
-   ```java
-   whisper.start();
-   ```
-
-6. **Stopping Execution:**
-
-   To stop the execution, call the `stop` method. This will terminate the ongoing task.
-
-   ```java
-   whisper.stop();
-   ```
-
-7. **Checking Execution Status:**
-
-   You can check whether the execution is currently in progress by calling the `isInProgress` method.
-
-   ```java
-   boolean isExecuting = whisper.isInProgress();
-   ```
-
-#### Sample Usage
-
-Below is a sample code snippet demonstrating how to use the `Whisper` class:
-
+**Initialization and Configuration:**
 ```java
-Context context = ...; // Obtain a valid context
-String modelPath = ...; // Specify the model file path
-String vocabPath = ...; // Specify the vocabulary file path
-boolean isMultilingual = ...; // Specify whether the model and vocab is multilingual
+// Initialize Whisper
+Whisper mWhisper = new Whisper(this); // Create Whisper instance
 
-Whisper whisper = new Whisper(context, modelPath, vocabPath, isMultilingual);
-whisper.setUpdateListener(new IUpdateListener() {
+// Load model and vocabulary for Whisper
+String modelPath = getFilePath("whisper-tiny.tflite"); // Provide model file path
+String vocabPath = getFilePath("filters_vocab_multilingual.bin"); // Provide vocabulary file path
+mWhisper.loadModel(modelPath, vocabPath, true); // Load model and set multilingual mode
+
+// Set a listener for Whisper to handle updates and results
+mWhisper.setListener(new IWhisperListener() {
     @Override
-    public void onStatusChanged(String message) {
-        // Handle status change messages or result
+    public void onUpdateReceived(String message) {
+        // Handle Whisper status updates
+    }
+
+    @Override
+    public void onResultReceived(String result) {
+        // Handle transcribed results
     }
 });
-whisper.setAction(Whisper.ACTION_TRANSLATE); // Set the desired action
-String wavFilePath = ...; // Specify the audio WAV file path
-whisper.setFilePath(wavFilePath);
-whisper.start();
-// ... Perform other tasks or user interactions ...
-whisper.stop();
 ```
 
-**Note**: Ensure that you have the necessary permissions, error handling, and file path management in your application when using the `Whisper` class.
-
-## User Documentation for Recorder Class
-
-### Introduction
-
-The `Recorder` class is a utility class designed for recording audio from a device's microphone and saving it to a WAV file. This class is primarily used to capture audio data for various purposes, such as speech recognition or audio transcription.
-
-### Usage
-
-To use the `Recorder` class in your Android application, follow these steps:
-
-1. **Initialization:**
-
-   Create an instance of the `Recorder` class by passing a valid `Context` object to the constructor. This context is used for permission checking.
-
-   ```java
-   Context context = ...; // Obtain a valid context
-   Recorder recorder = new Recorder(context);
-   ```
-
-2. **Update Status Listener:**
-
-   You can optionally set an update listener to receive status updates during the recording process. Implement the `IUpdateListener` interface to handle status change callbacks.
-
-   ```java
-   recorder.setUpdateListener(new IUpdateListener() {
-       @Override
-       public void onStatusChanged(String message) {
-           // Handle status change messages
-       }
-   });
-   ```
-
-3. **Setting File Path:**
-
-   Set the path where the recorded WAV file should be saved using the `setFilePath` method. Ensure that you have appropriate permissions to write to the specified file path.
-
-   ```java
-   String wavFilePath = ...; // Specify the file path
-   recorder.setFilePath(wavFilePath);
-   ```
-
-4. **Starting Recording:**
-
-   To start recording audio, call the `start` method. The recording process will continue until it is manually stopped using the `stop` method.
-
-   ```java
-   recorder.start();
-   ```
-
-5. **Stopping Recording:**
-
-   To stop the recording, call the `stop` method. This will terminate the recording process and save the recorded audio to the specified file path.
-
-   ```java
-   recorder.stop();
-   ```
-
-6. **Checking Recording Status:**
-
-   You can check whether the recording is currently in progress by calling the `isInProgress` method.
-
-   ```java
-   boolean isRecording = recorder.isInProgress();
-   ```
-
-### Recording Configuration
-
-The `Recorder` class uses the following configuration parameters for audio recording:
-
-- **Sample Rate**: 16,000 Hz
-- **Channels**: Mono (1 channel)
-- **Bytes Per Sample**: 16-bit
-- **Audio Source**: Microphone (MIC)
-
-These parameters are suitable for many audio recording scenarios. You can modify these settings by adjusting the corresponding variables in the class if needed.
-
-#### Sample Usage
-
-Below is a sample code snippet demonstrating how to use the `Recorder` class:
-
+**Transcription:**
 ```java
-Context context = ...; // Obtain a valid context
-Recorder recorder = new Recorder(context);
-recorder.setUpdateListener(new IUpdateListener() {
-    @override
-    public void onStatusChanged(String message) {
-        // Handle status change messages
+// Set the audio file path for transcription. Audio format should be in 16K, mono, 16bits
+String waveFilePath = getFilePath("your_audio_file.wav"); // Provide audio file path
+mWhisper.setFilePath(waveFilePath); // Set audio file path
+
+// Start transcription
+mWhisper.setAction(Whisper.ACTION_TRANSCRIBE); // Set action to transcription
+mWhisper.start(); // Start transcription
+
+// Perform other operations
+// Add your additional code here
+
+// Stop transcription
+mWhisper.stop(); // Stop transcription
+```
+
+### Recorder (Audio Recording)
+
+**Initialization and Configuration:**
+```java
+// Initialize Recorder
+Recorder mRecorder = new Recorder(this); // Create Recorder instance
+
+// Set a listener for Recorder to handle updates and audio data
+mRecorder.setListener(new IRecorderListener() {
+    @Override
+    public void onUpdateReceived(String message) {
+        // Handle Recorder status updates
+    }
+
+    @Override
+    public void onDataReceived(float[] samples) {
+        // Handle audio data received during recording
+        // You can forward this data to Whisper for live recognition using writeBuffer()
+        // mWhisper.writeBuffer(samples);
     }
 });
-String wavFilePath = ...; // Specify the file path
-recorder.setFilePath(wavFilePath);
-recorder.start();
-// ... Perform other tasks or user interactions ...
-recorder.stop();
 ```
+
+**Recording:**
+```java
+// Check and request recording permissions
+checkRecordPermission(); // Check and request recording permissions
+
+// Set the audio file path for recording. It record audio in 16K, mono, 16bits format
+String waveFilePath = getFilePath("your_audio_file.wav"); // Provide audio file path
+mRecorder.setFilePath(waveFilePath); // Set audio file path
+
+// Start recording
+mRecorder.start(); // Start recording
+
+// Perform other operations
+// Add your additional code here
+
+// Stop recording
+mRecorder.stop(); // Stop recording
+```
+
+Please adapt these code snippets to your specific use case, provide the correct file paths, and handle exceptions appropriately in your application.
 
 **Note**: Ensure that you have the necessary permissions, error handling, and file path management in your application when using the `Recorder` class.
 

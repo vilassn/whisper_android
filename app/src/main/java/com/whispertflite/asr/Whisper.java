@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.whispertflite.engine.IWhisperEngine;
 import com.whispertflite.engine.WhisperEngine;
+import com.whispertflite.engine.WhisperEngineNative;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,8 +26,8 @@ public class Whisper {
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
     // TODO: use WhisperEngine as per requirement
-    private final IWhisperEngine mWhisperEngine = new WhisperEngine();
-//    private final IWhisperEngine mWhisperEngine = new WhisperEngineNative();
+//    private final IWhisperEngine mWhisperEngine = new WhisperEngine();
+    private final IWhisperEngine mWhisperEngine = new WhisperEngineNative();
 //    private final IWhisperEngine mWhisperEngine = new WhisperEngineTwoModel();
 
     private String mAction = null;

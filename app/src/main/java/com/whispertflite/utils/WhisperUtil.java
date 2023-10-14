@@ -14,6 +14,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class WhisperUtil {
@@ -168,27 +169,27 @@ public class WhisperUtil {
         int nFft = 1 + fftSize / 2;
 
 /////////////// UNCOMMENT below block to use multithreaded mel calculation /////////////////////////
-//        // Calculate mel values using multiple threads
-//        List<Thread> workers = new ArrayList<>();
-//        for (int iw = 0; iw < nThreads; iw++) {
-//            final int ith = iw;  // Capture iw in a final variable for use in the lambda
-//            Thread thread = new Thread(() -> {
-//                // Inside the thread, ith will have the same value as iw (first value is 0)
-//                Log.d(TAG, "Thread " + ith + " started.");
-//
-//                float[] fftIn = new float[fftSize];
-//                Arrays.fill(fftIn, 0.0f);
-//                float[] fftOut = new float[fftSize * 2];
-//
-//                for (int i = ith; i < mel.nLen; i += nThreads) {
+        // Calculate mel values using multiple threads
+        List<Thread> workers = new ArrayList<>();
+        for (int iw = 0; iw < nThreads; iw++) {
+            final int ith = iw;  // Capture iw in a final variable for use in the lambda
+            Thread thread = new Thread(() -> {
+                // Inside the thread, ith will have the same value as iw (first value is 0)
+                Log.d(TAG, "Thread " + ith + " started.");
+
+                float[] fftIn = new float[fftSize];
+                Arrays.fill(fftIn, 0.0f);
+                float[] fftOut = new float[fftSize * 2];
+
+                for (int i = ith; i < mel.nLen; i += nThreads) {
 /////////////// END of Block ///////////////////////////////////////////////////////////////////////
 
 /////////////// COMMENT below block to use multithreaded mel calculation ///////////////////////////
-        float[] fftIn = new float[fftSize];
-        Arrays.fill(fftIn, 0.0f);
-        float[] fftOut = new float[fftSize * 2];
-
-        for (int i = 0; i < mel.nLen; i++) {
+//        float[] fftIn = new float[fftSize];
+//        Arrays.fill(fftIn, 0.0f);
+//        float[] fftOut = new float[fftSize * 2];
+//
+//        for (int i = 0; i < mel.nLen; i++) {
 /////////////// END of Block ///////////////////////////////////////////////////////////////////////
 
             int offset = i * fftStep;
@@ -229,19 +230,19 @@ public class WhisperUtil {
         }
 
 /////////////// UNCOMMENT below block to use multithreaded mel calculation /////////////////////////
-//            });
-//            workers.add(thread);
-//            thread.start();
-//        }
-//
-//        // Wait for all threads to finish
-//        for (Thread worker : workers) {
-//            try {
-//                worker.join();
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
-//        }
+            });
+            workers.add(thread);
+            thread.start();
+        }
+
+        // Wait for all threads to finish
+        for (Thread worker : workers) {
+            try {
+                worker.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
 /////////////// END of Block ///////////////////////////////////////////////////////////////////////
 
         // clamping and normalization

@@ -100,4 +100,7 @@ Please adapt these code snippets to your specific use case, provide the correct 
 
 Whisper ASR is a powerful tool for transcribing speech into text. However, keep in mind that handling audio data and transcriptions may require careful synchronization and error handling in your Android application to ensure a smooth user experience.
 
+[![Video](https://img.youtube.com/vi/zGxJeFZW0cI/0.jpg)](https://www.youtube.com/watch?v=zGxJeFZW0cI)
+
+
 Enjoy using the Whisper ASR Android app to enhance your speech recognition capabilities!

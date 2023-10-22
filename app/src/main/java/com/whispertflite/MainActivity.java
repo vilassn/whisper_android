@@ -1,6 +1,8 @@
 package com.whispertflite;
 
 import android.Manifest;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
@@ -18,6 +20,7 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.whispertflite.asr.IRecorderListener;
 import com.whispertflite.asr.IWhisperListener;
 import com.whispertflite.utils.WaveUtil;
@@ -33,6 +36,11 @@ import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
     private final String TAG = "MainActivity";
+
+    private TextView tvStatus;
+    private TextView tvResult;
+    private FloatingActionButton fabCopy;
+
     private Whisper mWhisper = null;
     private Recorder mRecorder = null;
 
@@ -44,8 +52,18 @@ public class MainActivity extends AppCompatActivity {
         final String[] waveFileName = {null};
         final Handler handler = new Handler(Looper.getMainLooper());
 
-        TextView tvStatus = findViewById(R.id.tvStatus);
-        TextView tvResult = findViewById(R.id.tvResult);
+        tvStatus = findViewById(R.id.tvStatus);
+        tvResult = findViewById(R.id.tvResult);
+        fabCopy = findViewById(R.id.fabCopy);
+        fabCopy.setOnClickListener(v -> {
+            // Get the text from tvResult
+            String textToCopy = tvResult.getText().toString();
+
+            // Copy the text to the clipboard
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            ClipData clip = ClipData.newPlainText("Copied Text", textToCopy);
+            clipboard.setPrimaryClip(clip);
+        });
 
         // Implementation of record button functionality
         Button btnMicRec = findViewById(R.id.btnRecord);
@@ -117,18 +135,22 @@ public class MainActivity extends AppCompatActivity {
         String[] extensionsToCopy = {"pcm", "bin", "wav", "tflite"};
         copyAssetsWithExtensionsToDataFolder(this, extensionsToCopy);
 
-        // English-only model and vocab
-//        boolean isMultilingual = false;
-//        String modelPath = getFilePath("whisper-tiny-en.tflite");
-//        String vocabPath = getFilePath("filters_vocab_en.bin");
 
-        // Multilingual model and vocab
-        boolean isMultilingual = true;
-        String modelPath = getFilePath("whisper-tiny.tflite");
-        String vocabPath = getFilePath("filters_vocab_multilingual.bin");
+        String modelPath;
+        String vocabPath;
+        boolean useMultilingual = false; // TODO: change multilingual flag as per model used
+        if (useMultilingual) {
+            // Multilingual model and vocab
+            modelPath = getFilePath("whisper-tiny.tflite");
+            vocabPath = getFilePath("filters_vocab_multilingual.bin");
+        } else {
+            // English-only model and vocab
+            modelPath = getFilePath("whisper-tiny-en.tflite");
+            vocabPath = getFilePath("filters_vocab_en.bin");
+        }
 
         mWhisper = new Whisper(this);
-        mWhisper.loadModel(modelPath, vocabPath, isMultilingual);
+        mWhisper.loadModel(modelPath, vocabPath, useMultilingual);
         mWhisper.setListener(new IWhisperListener() {
             @Override
             public void onUpdateReceived(String message) {
@@ -167,7 +189,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onDataReceived(float[] samples) {
-                mWhisper.writeBuffer(samples);
+                //mWhisper.writeBuffer(samples);
             }
         });
 

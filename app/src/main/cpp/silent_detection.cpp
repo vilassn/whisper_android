@@ -22,7 +22,7 @@ int main() {
         return 1;
     }
 
-	const int BUFFER_SIZE = 1024;
+	const int BUFFER_SIZE = 512; // 32 milliseconds of audio data used for silence detection
 	const double silenceThresholdDB = -35.0;  // Adjust the silence threshold as needed
 
 	int seconds_counter = 0;

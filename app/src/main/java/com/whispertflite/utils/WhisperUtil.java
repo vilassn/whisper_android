@@ -209,8 +209,8 @@ public class WhisperUtil {
                 fftOut[j] = fftOut[2 * j] * fftOut[2 * j] + fftOut[2 * j + 1] * fftOut[2 * j + 1];
             }
 
-            for (int j = 0; j < fftSize / 2; j++) {
-                fftOut[j] += fftOut[fftSize - j - 1];
+            for (int j = 1; j < fftSize / 2; j++) {
+                fftOut[j] += fftOut[fftSize - j];
             }
 
             // mel spectrogram

@@ -201,6 +201,7 @@ bool log_mel_spectrogram(const float* samples, const int n_samples, const int sa
             for (int i = ith; i < mel.n_len; i += n_threads) {
                 const int offset = i * fft_step;
 
+                // apply Hanning window
                 for (int j = 0; j < fft_size; j++) {
                     if (offset + j < n_samples) {
                         fft_in[j] = hann[j] * samples[offset + j];
@@ -209,15 +210,18 @@ bool log_mel_spectrogram(const float* samples, const int n_samples, const int sa
                     }
                 }
 
+                // FFT -> mag^2
                 fft(fft_in, fft_out);
 
                 for (int j = 0; j < fft_size; j++) {
                     fft_out[j] = (fft_out[2 * j + 0] * fft_out[2 * j + 0] + fft_out[2 * j + 1] * fft_out[2 * j + 1]);
                 }
+
                 for (int j = 1; j < fft_size / 2; j++) {
                     fft_out[j] += fft_out[fft_size - j];
                 }
 
+                // mel spectrogram
                 for (int j = 0; j < mel.n_mel; j++) {
                     double sum = 0.0;
 
@@ -237,10 +241,12 @@ bool log_mel_spectrogram(const float* samples, const int n_samples, const int sa
         }, iw);
     }
 
+    // Wait for all threads to finish
     for (int iw = 0; iw < n_threads; ++iw) {
         workers[iw].join();
     }
 
+    // clamping and normalization
     double mmax = -1e20;
     for (int i = 0; i < mel.n_mel * mel.n_len; i++) {
         if (mel.data[i] > mmax) {

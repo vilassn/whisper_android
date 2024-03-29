@@ -22,6 +22,7 @@ public class Recorder {
     public static final String ACTION_RECORD = "Record";
     public static final String MSG_RECORDING = "Recording...";
     public static final String MSG_RECORDING_DONE = "Recording done...!";
+    public static final int RECORDING_DURATION = 60; //60 seconds
 
     private final Context mContext;
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
@@ -103,7 +104,7 @@ public class Recorder {
             audioRecord.startRecording();
 
             int bufferSize1Sec = sampleRateInHz * bytesPerSample * channels;
-            int bufferSize30Sec = bufferSize1Sec * 30;
+            int bufferSize30Sec = bufferSize1Sec * RECORDING_DURATION;
             ByteBuffer buffer30Sec = ByteBuffer.allocateDirect(bufferSize30Sec);
             ByteBuffer bufferRealtime = ByteBuffer.allocateDirect(bufferSize1Sec * 5);
 

@@ -223,9 +223,30 @@ std::string TFLiteEngine::transcribeBuffer(std::vector<float> samples) {
 }
 
 std::string TFLiteEngine::transcribeFile(const char *waveFile) {
-	std::vector<float> pcmf32 = readWAVFile(waveFile);
-    pcmf32.resize((WHISPER_SAMPLE_RATE * WHISPER_CHUNK_SIZE), 0);
-    std::string text = transcribeBuffer(pcmf32);
+    std::vector<float> pcmf32 = readWAVFile(waveFile);
+    size_t originalSize = pcmf32.size();
+
+    // Determine the number of chunks required to process the entire file
+    size_t totalChunks = (originalSize + (WHISPER_SAMPLE_RATE * WHISPER_CHUNK_SIZE) - 1) /
+                         (WHISPER_SAMPLE_RATE * WHISPER_CHUNK_SIZE);
+
+    std::string text;
+    for (size_t chunkIndex = 0; chunkIndex < totalChunks; ++chunkIndex) {
+        // Extract a chunk of audio data
+        size_t startSample = chunkIndex * WHISPER_SAMPLE_RATE * WHISPER_CHUNK_SIZE;
+        size_t endSample = std::min(startSample + (WHISPER_SAMPLE_RATE * WHISPER_CHUNK_SIZE),
+                                    originalSize);
+        std::vector<float> chunk(pcmf32.begin() + startSample, pcmf32.begin() + endSample);
+
+        // Pad the chunk if it's smaller than the expected size
+        if (chunk.size() < WHISPER_SAMPLE_RATE * WHISPER_CHUNK_SIZE) {
+            chunk.resize(WHISPER_SAMPLE_RATE * WHISPER_CHUNK_SIZE, 0);
+        }
+
+        // Transcribe the chunk and append the result to the text
+        std::string chunkText = transcribeBuffer(chunk);
+        text += chunkText;
+    }
     return text;
 }
 

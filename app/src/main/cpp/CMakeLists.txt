@@ -8,7 +8,7 @@ set(INCLUDE_DIRS
         ${CMAKE_CURRENT_LIST_DIR}/tf-lite-api/include/flatbuffers/include
         )
 
-# # Check if the build is Android
+# Check if the build is Android
 if (ANDROID)
     add_library(audioEngine SHARED TFLiteEngine.cpp TFLiteEngineJNI.cpp)
     target_include_directories(audioEngine PRIVATE ${INCLUDE_DIRS})
@@ -18,8 +18,26 @@ if (ANDROID)
     set_target_properties(tflite PROPERTIES IMPORTED_LOCATION
             ${CMAKE_CURRENT_LIST_DIR}/tf-lite-api/generated-libs/${ANDROID_ABI}/libtensorflowlite.so)
 
-    target_link_libraries(audioEngine tflite)
-endif ()
+    # Add Qualcomm libraries
+    if(${ANDROID_ABI} STREQUAL "arm64-v8a")
+        # Add Qualcomm ARM64 libraries
+        add_library(qualcomm_arm64 SHARED IMPORTED)
+        set_target_properties(qualcomm_arm64 PROPERTIES IMPORTED_LOCATION
+                ${CMAKE_CURRENT_LIST_DIR}/jniLibs/arm64-v8a/libqualcomm_arm64.so)
+
+        target_link_libraries(audioEngine tflite qualcomm_arm64)
+    endif()
+
+    if(${ANDROID_ABI} STREQUAL "hexagon-v75")
+        # Add Qualcomm Hexagon libraries
+        add_library(qualcomm_hexagon SHARED IMPORTED)
+        set_target_properties(qualcomm_hexagon PROPERTIES IMPORTED_LOCATION
+                ${CMAKE_CURRENT_LIST_DIR}/jniLibs/hexagon-v75/libqualcomm_hexagon.so)
+
+        target_link_libraries(audioEngine tflite qualcomm_hexagon)
+    endif()
+
+endif()
 
 # Check if the build is not Android
 if (NOT ANDROID)

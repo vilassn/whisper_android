@@ -1,1 +1,3 @@
 /build
+/src/main/assets/whisperDecoder.tflite
+/src/main/assets/whisperEncoder.tflite

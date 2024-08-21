@@ -30,7 +30,11 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.debug
+        }
+    }
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['src/main/jniLibs', "${project(':qnn_sdk').buildDir}/libs"]
         }
     }
     externalNativeBuild {
@@ -39,28 +43,51 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
     kotlinOptions {
-        jvmTarget = '11'
+        jvmTarget = '1.8'
+    }
+
+    // Add this block to resolve library conflicts
+    packagingOptions {
+        pickFirst 'lib/arm64-v8a/libc++_shared.so'
+        pickFirst 'lib/arm64-v8a/libhta.so'
+        pickFirst 'lib/arm64-v8a/libhta_hexagon_runtime.so'
+        pickFirst 'lib/arm64-v8a/libsnpe-android.so'
+        pickFirst 'lib/arm64-v8a/libSNPE.so'
+        pickFirst 'lib/arm64-v8a/libSnpeDspV66Skel.so'
+        pickFirst 'lib/arm64-v8a/libSnpeDspV66Stub.so'
+        pickFirst 'lib/arm64-v8a/libSnpeHtpPrepare.so'
+        pickFirst 'lib/arm64-v8a/libSnpeHtpV68Calculate.so'
+        pickFirst 'lib/arm64-v8a/libSnpeHtpV68Skel.so'
+        pickFirst 'lib/arm64-v8a/libSnpeHtpV68Stub.so'
+        pickFirst 'lib/arm64-v8a/libSnpeHtpV69Calculate.so'
+        pickFirst 'lib/arm64-v8a/libSnpeHtpV69Skel.so'
+        pickFirst 'lib/arm64-v8a/libSnpeHtpV69Stub.so'
+        pickFirst 'lib/arm64-v8a/libSnpeHtpV73Calculate.so'
+        pickFirst 'lib/arm64-v8a/libSnpeHtpV73Skel.so'
+        pickFirst 'lib/arm64-v8a/libSnpeHtpV73Stub.so'
     }
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.10.0'
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'androidx.core:core-ktx:1.12.0'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    api 'org.tensorflow:tensorflow-lite:2.16.1'
+    api 'org.tensorflow:tensorflow-lite-support:0.4.4'
+    implementation 'org.tensorflow:tensorflow-lite-gpu:2.16.1'
+    implementation 'org.tensorflow:tensorflow-lite-gpu-api:2.16.1'
+    implementation 'org.tensorflow:tensorflow-lite-gpu-delegate-plugin:0.4.4'
+    implementation project(":qnn_sdk")
 
-    implementation 'org.tensorflow:tensorflow-lite:2.11.0'
-    implementation 'org.tensorflow:tensorflow-lite-support:0.4.3'
-//    implementation 'org.tensorflow:tensorflow-lite-api:2.11.0'
-//    implementation 'org.tensorflow:tensorflow-lite-support-api:0.4.3'
-//    implementation 'org.tensorflow:tensorflow-lite-select-tf-ops:2.11.0'
-
-//    implementation 'org.tensorflow:tensorflow-lite-gpu:2.11.0'
-//    implementation 'org.tensorflow:tensorflow-lite-gpu-api:2.11.0'
-
-//    implementation files('libs/jlibrosa-1.1.8-SNAPSHOT-jar-with-dependencies.jar')
+    // Qualcomm Neural Processing SDK dependencies
+//    implementation files('libs/snpe-release.aar')
+//    implementation files('libs/platform-validator.aar')
 }

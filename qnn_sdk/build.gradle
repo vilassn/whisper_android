@@ -1,0 +1,48 @@
+configurations.maybeCreate("default")
+
+def qnnVersion=project.properties['qnnVersion']
+def buildDir = project(":qnn_sdk").getLayout().getBuildDirectory()
+def libsDir = buildDir.dir("libs/arm64-v8a")
+def qnnDelegateAAR = "qtld-release.aar"
+
+dependencies {
+    // Read from ivy "repository" (S3 mirror) defined in project settings.gradle
+    "default" "qualcomm:neural_processing_sdk:$qnnVersion@zip"
+}
+artifacts {
+    "default" buildDir.file(qnnDelegateAAR)
+}
+
+// Unzip QNN to correct paths for build
+configurations.default.setCanBeResolved(true)
+def qnnZipPath = configurations.default.files.find { it.path.contains("$qnnVersion") }
+
+// Android Java library
+copy {
+    from zipTree(qnnZipPath).matching {
+        include '**/' + qnnDelegateAAR
+    }.singleFile
+    into buildDir
+}
+
+// Shared Android Libraries for QNN and Hexagon
+copy {
+    from zipTree(qnnZipPath).matching {
+        // Note:
+        // libQnnTFLiteDelegate.so is not included here.
+        // Is is packaged already in the QNN TFLite Delegate AAR file.
+        //
+        include '**/lib/aarch64-android/libQnnGpu.so'
+        include '**/lib/aarch64-android/libQnnDsp.so'
+        include '**/lib/aarch64-android/libQnnHtp.so'
+        include '**/lib/aarch64-android/libQnnHtpPrepare.so'
+        include '**/lib/aarch64-android/libQnnSystem.so'
+        include '**/lib/hexagon-v**/unsigned/libQnnHtpV**Skel.so'
+        exclude '**/lib/aarch64-android/libQnnHtpV**CalculatorStub.so'
+        include '**/lib/aarch64-android/libQnnHtpV**Stub.so'
+        include '**/lib/hexagon-v**/unsigned/libQnnDspV**Skel.so'
+        exclude '**/lib/aarch64-android/libQnnDspV**CalculatorStub.so'
+        include '**/lib/aarch64-android/libQnnDspV**Stub.so'
+    }.files
+    into libsDir
+}

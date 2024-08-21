@@ -5,12 +5,27 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
+        flatDir {
+            dirs 'libs'
+        }
+        ivy {
+            url 'https://qaihub-public-assets.s3.us-west-2.amazonaws.com/'
+            patternLayout {
+                artifact '/qai-hub-apps/[organization]_[module]/v[revision].[ext]'
+            }
+            metadataSources {
+                artifact()
+            }
+        }
     }
 }
+
 rootProject.name = "WhisperTFLite"
 include ':app'
+include ":qnn_sdk"

@@ -16,3 +16,4 @@ app/src/main/cpp/build
 .externalNativeBuild
 .cxx
 local.properties
+/qnn_sdk/build/qtld-release.aar

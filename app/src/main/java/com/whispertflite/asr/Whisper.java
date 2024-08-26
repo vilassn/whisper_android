@@ -4,7 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.whispertflite.engine.IWhisperEngine;
-import com.whispertflite.engine.WhisperEngineNative;
+import com.whispertflite.engine.WhisperEngineTwoModel;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,10 +27,7 @@ public class Whisper {
     private final Queue<float[]> audioBufferQueue = new LinkedList<>();
     private Thread mMicTranscribeThread = null;
 
-    // TODO: use WhisperEngine as per requirement
-//    private final IWhisperEngine mWhisperEngine = new WhisperEngine();
-    private final IWhisperEngine mWhisperEngine = new WhisperEngineNative();
-//    private final IWhisperEngine mWhisperEngine = new WhisperEngineTwoModel();
+    private final WhisperEngineTwoModel mWhisperEngine;
 
     private String mAction = null;
     private String mWavFilePath = null;
@@ -39,6 +36,7 @@ public class Whisper {
 
     public Whisper(Context context) {
         mContext = context;
+        mWhisperEngine = new WhisperEngineTwoModel(context);
     }
 
     public void setListener(IWhisperListener listener) {
@@ -84,7 +82,6 @@ public class Whisper {
         try {
             if (mExecutorThread != null) {
                 mWhisperEngine.interrupt();
-                //mExecutorThread.interrupt();
                 mExecutorThread.join();
                 mExecutorThread = null;
             }
@@ -109,7 +106,6 @@ public class Whisper {
 
     private void threadFunction() {
         try {
-            // Get Transcription
             if (mWhisperEngine.isInitialized()) {
                 Log.d(TAG, "WaveFile: " + mWavFilePath);
 
@@ -117,12 +113,6 @@ public class Whisper {
                 if (waveFile.exists()) {
                     long startTime = System.currentTimeMillis();
                     sendUpdate(MSG_PROCESSING);
-
-//                    String result = "";
-//                    if (mAction.equals(ACTION_TRANSCRIBE))
-//                        result = mWhisperEngine.getTranscription(mWavFilePath);
-//                    else if (mAction == ACTION_TRANSLATE)
-//                        result = mWhisperEngine.getTranslation(mWavFilePath);
 
                     // Get result from wav file
                     synchronized (mWhisperEngineLock) {
@@ -189,5 +179,10 @@ public class Whisper {
             // Start the transcribe thread
             mMicTranscribeThread.start();
         }
+    }
+
+    // Add a cleanup method to release resources
+    public void cleanup() {
+        mWhisperEngine.cleanup();
     }
 }

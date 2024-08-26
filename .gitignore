@@ -17,3 +17,6 @@ app/src/main/cpp/build
 .cxx
 local.properties
 /qnn_sdk/build/qtld-release.aar
+/app/src/main/assets/whisper-decoder-base.tflite
+/app/src/main/assets/whisper-encoder-base.tflite
+/qnn_sdk/build/.transforms/

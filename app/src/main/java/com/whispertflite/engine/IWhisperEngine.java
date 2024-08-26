@@ -11,9 +11,6 @@ public interface IWhisperEngine {
     boolean initialize(String modelPath, String vocabPath, boolean multilingual) throws IOException;
     String transcribeFile(String wavePath);
     String transcribeBuffer(float[] samples);
-    float[] encode(float[] audioBuffer);
-    String decode(float[] encoderOutput);
-    String streamingDecode(float[] encoderOutput);
 
     //String getTranslation(String wavePath);
 }

@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.whispertflite.engine.IWhisperEngine;
+import com.whispertflite.engine.WhisperEngine;
 import com.whispertflite.engine.WhisperEngineNative;
 
 import java.io.File;
@@ -11,183 +12,190 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Whisper {
-    public static final String TAG = "Whisper";
-    public static final String ACTION_TRANSLATE = "TRANSLATE";
-    public static final String ACTION_TRANSCRIBE = "TRANSCRIBE";
+    private static final String TAG = "Whisper";
     public static final String MSG_PROCESSING = "Processing...";
     public static final String MSG_PROCESSING_DONE = "Processing done...!";
     public static final String MSG_FILE_NOT_FOUND = "Input file doesn't exist..!";
 
+    public static final Action ACTION_TRANSCRIBE = Action.TRANSCRIBE;
+    public static final Action ACTION_TRANSLATE = Action.TRANSLATE;
+
+    private enum Action {
+        TRANSLATE, TRANSCRIBE
+    }
+
     private final Context mContext;
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
-    private final Object mAudioBufferQueueLock = new Object();  // Synchronization object
-    private final Object mWhisperEngineLock = new Object();  // Synchronization object
     private final Queue<float[]> audioBufferQueue = new LinkedList<>();
-    private Thread mMicTranscribeThread = null;
 
-    // TODO: use WhisperEngine as per requirement
-//    private final IWhisperEngine mWhisperEngine = new WhisperEngine();
-    private final IWhisperEngine mWhisperEngine = new WhisperEngineNative();
-//    private final IWhisperEngine mWhisperEngine = new WhisperEngineTwoModel();
+    private final IWhisperEngine mWhisperEngine;
+    private Action mAction;
+    private String mWavFilePath;
+    private IWhisperListener mUpdateListener;
 
-    private String mAction = null;
-    private String mWavFilePath = null;
-    private Thread mExecutorThread = null;
-    private IWhisperListener mUpdateListener = null;
+    private final Lock taskLock = new ReentrantLock();
+    private final Condition hasTask = taskLock.newCondition();
+    private volatile boolean taskAvailable = false;
 
     public Whisper(Context context) {
-        mContext = context;
+        this.mContext = context;
+//        this.mWhisperEngine = new WhisperEngine();
+        this.mWhisperEngine = new WhisperEngineNative();
+
+        // Start thread for file transcription for file transcription
+        Thread threadTranscbFile = new Thread(this::transcribeFileLoop);
+        threadTranscbFile.start();
+
+        // Start thread for buffer transcription for live mic feed transcription
+        Thread threadTranscbBuffer = new Thread(this::transcribeBufferLoop);
+        threadTranscbBuffer.start();
     }
 
     public void setListener(IWhisperListener listener) {
-        mUpdateListener = listener;
-        mWhisperEngine.setUpdateListener(mUpdateListener);
+        this.mUpdateListener = listener;
+        this.mWhisperEngine.setUpdateListener(listener);
     }
 
     public void loadModel(String modelPath, String vocabPath, boolean isMultilingual) {
         try {
             mWhisperEngine.initialize(modelPath, vocabPath, isMultilingual);
-
-            // Start thread for mic data transcription in realtime
-            startMicTranscriptionThread();
         } catch (IOException e) {
-            Log.e(TAG, "Error...", e);
+            Log.e(TAG, "Error initializing model...", e);
+            sendUpdate("Model initialization failed");
         }
     }
 
-    public void setAction(String action) {
-        mAction = action;
+    public void setAction(Action action) {
+        this.mAction = action;
     }
 
     public void setFilePath(String wavFile) {
-        mWavFilePath = wavFile;
+        this.mWavFilePath = wavFile;
     }
 
     public void start() {
-        if (mInProgress.get()) {
+        if (!mInProgress.compareAndSet(false, true)) {
             Log.d(TAG, "Execution is already in progress...");
             return;
         }
-
-        mExecutorThread = new Thread(() -> {
-            mInProgress.set(true);
-            threadFunction();
-            mInProgress.set(false);
-        });
-        mExecutorThread.start();
+        taskLock.lock();
+        try {
+            taskAvailable = true;
+            hasTask.signal();
+        } finally {
+            taskLock.unlock();
+        }
     }
 
     public void stop() {
         mInProgress.set(false);
-        try {
-            if (mExecutorThread != null) {
-                mWhisperEngine.interrupt();
-                //mExecutorThread.interrupt();
-                mExecutorThread.join();
-                mExecutorThread = null;
-            }
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     public boolean isInProgress() {
         return mInProgress.get();
     }
 
-    private void sendUpdate(String message) {
-        if (mUpdateListener != null)
-            mUpdateListener.onUpdateReceived(message);
+    private void transcribeFileLoop() {
+        while (!Thread.currentThread().isInterrupted()) {
+            taskLock.lock();
+            try {
+                while (!taskAvailable) {
+                    hasTask.await();
+                }
+                transcribeFile();
+                taskAvailable = false;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                taskLock.unlock();
+            }
+        }
     }
 
-    private void sendResult(String message) {
-        if (mUpdateListener != null)
-            mUpdateListener.onResultReceived(message);
-    }
-
-    private void threadFunction() {
+    private void transcribeFile() {
         try {
-            // Get Transcription
-            if (mWhisperEngine.isInitialized()) {
-                Log.d(TAG, "WaveFile: " + mWavFilePath);
-
+            if (mWhisperEngine.isInitialized() && mWavFilePath != null) {
                 File waveFile = new File(mWavFilePath);
                 if (waveFile.exists()) {
                     long startTime = System.currentTimeMillis();
                     sendUpdate(MSG_PROCESSING);
 
-//                    String result = "";
-//                    if (mAction.equals(ACTION_TRANSCRIBE))
-//                        result = mWhisperEngine.getTranscription(mWavFilePath);
-//                    else if (mAction == ACTION_TRANSLATE)
-//                        result = mWhisperEngine.getTranslation(mWavFilePath);
-
-                    // Get result from wav file
-                    synchronized (mWhisperEngineLock) {
-                        String result = mWhisperEngine.transcribeFile(mWavFilePath);
-                        sendResult(result);
-                        Log.d(TAG, "Result len: " + result.length() + ", Result: " + result);
+                    String result = null;
+                    synchronized (mWhisperEngine) {
+                        if (mAction == Action.TRANSCRIBE) {
+                            result = mWhisperEngine.transcribeFile(mWavFilePath);
+                        } else {
+//                            result = mWhisperEngine.getTranslation(mWavFilePath);
+                            Log.d(TAG, "TRANSLATE feature is not implemented");
+                        }
                     }
+                    sendResult(result);
 
-                    sendUpdate(MSG_PROCESSING_DONE);
-
-                    // Calculate time required for transcription
-                    long endTime = System.currentTimeMillis();
-                    long timeTaken = endTime - startTime;
+                    long timeTaken = System.currentTimeMillis() - startTime;
                     Log.d(TAG, "Time Taken for transcription: " + timeTaken + "ms");
+                    sendUpdate(MSG_PROCESSING_DONE);
                 } else {
                     sendUpdate(MSG_FILE_NOT_FOUND);
                 }
+            } else {
+                sendUpdate("Engine not initialized or file path not set");
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error...", e);
-            sendUpdate(e.getMessage());
+            Log.e(TAG, "Error during transcription", e);
+            sendUpdate("Transcription failed: " + e.getMessage());
+        } finally {
+            mInProgress.set(false);
         }
     }
 
-    // Write buffer in Queue
+    private void sendUpdate(String message) {
+        if (mUpdateListener != null) {
+            mUpdateListener.onUpdateReceived(message);
+        }
+    }
+
+    private void sendResult(String message) {
+        if (mUpdateListener != null) {
+            mUpdateListener.onResultReceived(message);
+        }
+    }
+
+    /////////////////////// Live MIC feed transcription calls /////////////////////////////////
+    private void transcribeBufferLoop() {
+        while (!Thread.currentThread().isInterrupted()) {
+            float[] samples = readBuffer();
+            if (samples != null) {
+                synchronized (mWhisperEngine) {
+                    String result = mWhisperEngine.transcribeBuffer(samples);
+                    sendResult(result);
+                }
+            }
+        }
+    }
+
     public void writeBuffer(float[] samples) {
-        synchronized (mAudioBufferQueueLock) {
+        synchronized (audioBufferQueue) {
             audioBufferQueue.add(samples);
-            mAudioBufferQueueLock.notify(); // Notify waiting threads
+            audioBufferQueue.notify();
         }
     }
 
-    // Read buffer from Queue
     private float[] readBuffer() {
-        synchronized (mAudioBufferQueueLock) {
+        synchronized (audioBufferQueue) {
             while (audioBufferQueue.isEmpty()) {
                 try {
-                    // Wait for the queue to have data
-                    mAudioBufferQueueLock.wait();
+                    audioBufferQueue.wait();
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
+                    return null;
                 }
             }
             return audioBufferQueue.poll();
-        }
-    }
-
-    // Mic data transcription thread in realtime
-    private void startMicTranscriptionThread() {
-        if(mMicTranscribeThread == null) {
-            // Create a transcribe thread
-            mMicTranscribeThread = new Thread(() -> {
-                while (true) {
-                    float[] samples = readBuffer();
-                    if (samples != null) {
-                        synchronized (mWhisperEngineLock) {
-                            String result = mWhisperEngine.transcribeBuffer(samples);
-                            sendResult(result);
-                        }
-                    }
-                }
-            });
-
-            // Start the transcribe thread
-            mMicTranscribeThread.start();
         }
     }
 }

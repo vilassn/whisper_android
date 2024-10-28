@@ -8,11 +8,19 @@
     android:padding="16dp"
     tools:context="com.whispertflite.MainActivity">
 
-    <Spinner
-        android:id="@+id/spnrFiles"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="16dp"
+        android:orientation="horizontal">
+
+        <Spinner
+            android:id="@+id/spnrFiles"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp" />
+    </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -22,21 +30,33 @@
 
         <Button
             android:id="@+id/btnRecord"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="8dp"
+            android:layout_marginEnd="4dp"
+            android:minWidth="100dp"
+            android:textSize="15sp"
             android:background="@drawable/rounded_button_background"
             android:text="@string/record" />
 
         <Button
             android:id="@+id/btnTranscb"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
+            android:layout_marginEnd="4dp"
+            android:minWidth="100dp"
+            android:textSize="15sp"
             android:background="@drawable/rounded_button_background"
             android:text="@string/transcribe" />
+
+        <Button
+            android:id="@+id/btnPlay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:minWidth="100dp"
+            android:textSize="15sp"
+            android:background="@drawable/rounded_button_background"
+            android:text="@string/play" />
     </LinearLayout>
 
     <LinearLayout

@@ -23,6 +23,7 @@ import androidx.core.content.ContextCompat;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.whispertflite.asr.IRecorderListener;
 import com.whispertflite.asr.IWhisperListener;
+import com.whispertflite.asr.Player;
 import com.whispertflite.utils.WaveUtil;
 import com.whispertflite.asr.Recorder;
 import com.whispertflite.asr.Whisper;
@@ -43,6 +44,8 @@ public class MainActivity extends AppCompatActivity {
 
     private Whisper mWhisper = null;
     private Recorder mRecorder = null;
+
+    private final Player mAudioPlayer = new Player();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,6 +95,30 @@ public class MainActivity extends AppCompatActivity {
                 Log.d(TAG, "Start transcription...");
                 String waveFilePath = getFilePath(waveFileName[0]);
                 startTranscription(waveFilePath);
+            }
+        });
+
+        // Implementation of Play button functionality
+        Button btnPlay = findViewById(R.id.btnPlay);
+        btnPlay.setOnClickListener(v -> {
+            if(!mAudioPlayer.isPlaying()) {
+                String waveFilePath = getFilePath(waveFileName[0]);
+                mAudioPlayer.setFilePath(waveFilePath);
+                mAudioPlayer.startPlayback();
+            } else {
+                mAudioPlayer.stopPlayback();
+            }
+        });
+
+        mAudioPlayer.setAudioPlayerListener(new Player.IAudioPlayerListener() {
+            @Override
+            public void onPlaybackStarted() {
+                handler.post(() -> btnPlay.setText(R.string.stop));
+            }
+
+            @Override
+            public void onPlaybackStopped() {
+                handler.post(() -> btnPlay.setText(R.string.play));
             }
         });
 
@@ -181,9 +208,9 @@ public class MainActivity extends AppCompatActivity {
 
                 if (message.equals(Recorder.MSG_RECORDING)) {
                     handler.post(() -> tvResult.setText(""));
-                    handler.post(() -> btnMicRec.setText(Recorder.ACTION_STOP));
+                    handler.post(() -> btnMicRec.setText(R.string.stop));
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
-                    handler.post(() -> btnMicRec.setText(Recorder.ACTION_RECORD));
+                    handler.post(() -> btnMicRec.setText(R.string.record));
                 }
             }
 

@@ -3,6 +3,7 @@
     <string name="transcribe">Transcribe</string>
     <string name="translate">Translate</string>
     <string name="record">Record</string>
+    <string name="play">Play</string>
     <string name="processing">Processing...</string>
     <string name="stop">Stop</string>
     <string name="need_record_audio_permission">"This app needs RECORD_AUDIO permission"</string>

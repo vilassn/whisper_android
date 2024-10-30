@@ -21,9 +21,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.whispertflite.asr.IRecorderListener;
-import com.whispertflite.asr.IWhisperListener;
-import com.whispertflite.asr.AudioPlayer;
+import com.whispertflite.asr.Player;
 import com.whispertflite.utils.WaveUtil;
 import com.whispertflite.asr.Recorder;
 import com.whispertflite.asr.Whisper;
@@ -42,9 +40,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvResult;
     private FloatingActionButton fabCopy;
 
-    private Whisper mWhisper = null;
+    private Player mPlayer = null;
     private Recorder mRecorder = null;
-    private AudioPlayer mAudioPlayer = null;
+    private Whisper mWhisper = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,17 +98,17 @@ public class MainActivity extends AppCompatActivity {
         // Implementation of Play button functionality
         Button btnPlay = findViewById(R.id.btnPlay);
         btnPlay.setOnClickListener(v -> {
-            if(!mAudioPlayer.isPlaying()) {
+            if(!mPlayer.isPlaying()) {
                 String waveFilePath = getFilePath(waveFileName[0]);
-                mAudioPlayer.initializePlayer(waveFilePath);
-                mAudioPlayer.startPlayback();
+                mPlayer.initializePlayer(waveFilePath);
+                mPlayer.startPlayback();
             } else {
-                mAudioPlayer.stopPlayback();
+                mPlayer.stopPlayback();
             }
         });
 
-        mAudioPlayer = new AudioPlayer(this);
-        mAudioPlayer.setListener(new AudioPlayer.PlaybackListener() {
+        mPlayer = new Player(this);
+        mPlayer.setListener(new Player.PlaybackListener() {
             @Override
             public void onPlaybackStarted() {
                 handler.post(() -> btnPlay.setText(R.string.stop));
@@ -162,7 +160,6 @@ public class MainActivity extends AppCompatActivity {
         String[] extensionsToCopy = {"pcm", "bin", "wav", "tflite"};
         copyAssetsWithExtensionsToDataFolder(this, extensionsToCopy);
 
-
         String modelPath;
         String vocabPath;
         boolean useMultilingual = false; // TODO: change multilingual flag as per model used
@@ -178,7 +175,7 @@ public class MainActivity extends AppCompatActivity {
 
         mWhisper = new Whisper(this);
         mWhisper.loadModel(modelPath, vocabPath, useMultilingual);
-        mWhisper.setListener(new IWhisperListener() {
+        mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
             public void onUpdateReceived(String message) {
                 Log.d(TAG, "Update is received, Message: " + message);
@@ -200,7 +197,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mRecorder = new Recorder(this);
-        mRecorder.setListener(new IRecorderListener() {
+        mRecorder.setListener(new Recorder.RecorderListener() {
             @Override
             public void onUpdateReceived(String message) {
                 Log.d(TAG, "Update is received, Message: " + message);
@@ -216,7 +213,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onDataReceived(float[] samples) {
-                //mWhisper.writeBuffer(samples);
+//                mWhisper.writeBuffer(samples);
             }
         });
 

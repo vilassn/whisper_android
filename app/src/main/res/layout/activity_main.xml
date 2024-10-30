@@ -25,38 +25,38 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="10dp"
         android:orientation="horizontal">
 
         <Button
             android:id="@+id/btnRecord"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="4dp"
-            android:minWidth="100dp"
+            android:layout_margin="3dp"
+            android:layout_weight="1"
             android:textSize="15sp"
             android:background="@drawable/rounded_button_background"
             android:text="@string/record" />
 
         <Button
-            android:id="@+id/btnTranscb"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="4dp"
-            android:minWidth="100dp"
-            android:textSize="15sp"
-            android:background="@drawable/rounded_button_background"
-            android:text="@string/transcribe" />
-
-        <Button
             android:id="@+id/btnPlay"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="4dp"
-            android:minWidth="100dp"
+            android:layout_margin="3dp"
+            android:layout_weight="1"
             android:textSize="15sp"
             android:background="@drawable/rounded_button_background"
             android:text="@string/play" />
+
+        <Button
+            android:id="@+id/btnTranscb"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="3dp"
+            android:layout_weight="1"
+            android:textSize="15sp"
+            android:background="@drawable/rounded_button_background"
+            android:text="@string/transcribe" />
     </LinearLayout>
 
     <LinearLayout

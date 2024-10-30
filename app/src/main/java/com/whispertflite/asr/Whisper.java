@@ -3,8 +3,8 @@ package com.whispertflite.asr;
 import android.content.Context;
 import android.util.Log;
 
-import com.whispertflite.engine.IWhisperEngine;
 import com.whispertflite.engine.WhisperEngine;
+import com.whispertflite.engine.WhisperEngineJava;
 import com.whispertflite.engine.WhisperEngineNative;
 
 import java.io.File;
@@ -17,6 +17,12 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Whisper {
+
+    public interface WhisperListener {
+        void onUpdateReceived(String message);
+        void onResultReceived(String result);
+    }
+
     private static final String TAG = "Whisper";
     public static final String MSG_PROCESSING = "Processing...";
     public static final String MSG_PROCESSING_DONE = "Processing done...!";
@@ -29,22 +35,20 @@ public class Whisper {
         TRANSLATE, TRANSCRIBE
     }
 
-    private final Context mContext;
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
     private final Queue<float[]> audioBufferQueue = new LinkedList<>();
 
-    private final IWhisperEngine mWhisperEngine;
+    private final WhisperEngine mWhisperEngine;
     private Action mAction;
     private String mWavFilePath;
-    private IWhisperListener mUpdateListener;
+    private WhisperListener mUpdateListener;
 
     private final Lock taskLock = new ReentrantLock();
     private final Condition hasTask = taskLock.newCondition();
     private volatile boolean taskAvailable = false;
 
     public Whisper(Context context) {
-        this.mContext = context;
-//        this.mWhisperEngine = new WhisperEngine();
+//        this.mWhisperEngine = new WhisperEngineJava();
         this.mWhisperEngine = new WhisperEngineNative();
 
         // Start thread for file transcription for file transcription
@@ -56,9 +60,8 @@ public class Whisper {
         threadTranscbBuffer.start();
     }
 
-    public void setListener(IWhisperListener listener) {
+    public void setListener(WhisperListener listener) {
         this.mUpdateListener = listener;
-        this.mWhisperEngine.setUpdateListener(listener);
     }
 
     public void loadModel(String modelPath, String vocabPath, boolean isMultilingual) {

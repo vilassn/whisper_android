@@ -6,12 +6,18 @@ import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.os.Environment;
 import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
 
 import com.whispertflite.utils.WaveUtil;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -20,6 +26,13 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Recorder {
+
+    public interface RecorderListener {
+        void onUpdateReceived(String message);
+
+        void onDataReceived(float[] samples);
+    }
+
     private static final String TAG = "Recorder";
     public static final String ACTION_STOP = "Stop";
     public static final String ACTION_RECORD = "Record";
@@ -30,7 +43,7 @@ public class Recorder {
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
     private String mWavFilePath;
-    private IRecorderListener mListener;
+    private RecorderListener mListener;
     private final Lock lock = new ReentrantLock();
     private final Condition hasTask = lock.newCondition();
     private final Object fileSavedLock = new Object(); // Lock object for wait/notify
@@ -47,7 +60,7 @@ public class Recorder {
         workerThread.start();
     }
 
-    public void setListener(IRecorderListener listener) {
+    public void setListener(RecorderListener listener) {
         this.mListener = listener;
     }
 
@@ -143,24 +156,28 @@ public class Recorder {
         AudioRecord audioRecord = new AudioRecord(audioSource, sampleRateInHz, channelConfig, audioFormat, bufferSize);
         audioRecord.startRecording();
 
-        ByteBuffer buffer30Sec = ByteBuffer.allocateDirect(sampleRateInHz * bytesPerSample * channels * 30);
-        ByteBuffer bufferRealtime = ByteBuffer.allocateDirect(sampleRateInHz * bytesPerSample * channels * 5);
+        // Calculate maximum byte counts for 30 seconds (for saving)
+        int bytesForThirtySeconds = sampleRateInHz * bytesPerSample * channels * 30;
+        int bytesForThreeSeconds = sampleRateInHz * bytesPerSample * channels * 3;
 
-        int totalBytesRead = 0;
+        ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream(); // Buffer for saving data in wave file
+        ByteArrayOutputStream realtimeBuffer = new ByteArrayOutputStream(); // Buffer for real-time processing
+
         byte[] audioData = new byte[bufferSize];
+        int totalBytesRead = 0;
 
-        while (mInProgress.get() && totalBytesRead < buffer30Sec.capacity()) {
+        while (mInProgress.get() && totalBytesRead < bytesForThirtySeconds) {
             int bytesRead = audioRecord.read(audioData, 0, bufferSize);
             if (bytesRead > 0) {
-                buffer30Sec.put(audioData, 0, bytesRead);
-                bufferRealtime.put(audioData, 0, bytesRead);
+                outputBuffer.write(audioData, 0, bytesRead);  // Save all bytes read up to 30 seconds
+                realtimeBuffer.write(audioData, 0, bytesRead); // Accumulate real-time audio data
                 totalBytesRead += bytesRead;
 
-                if (totalBytesRead / (sampleRateInHz * bytesPerSample * channels) % 3 == 0) {
-                    bufferRealtime.flip();
-                    float[] samples = convertToFloatArray(bufferRealtime);
-                    bufferRealtime.clear();
-                    sendData(samples);
+                // Check if realtimeBuffer has more than 3 seconds of data
+                if (realtimeBuffer.size() >= bytesForThreeSeconds) {
+                    float[] samples = convertToFloatArray(ByteBuffer.wrap(realtimeBuffer.toByteArray()));
+                    realtimeBuffer.reset(); // Clear the buffer for the next accumulation
+                    sendData(samples); // Send real-time data for processing
                 }
             } else {
                 Log.d(TAG, "AudioRecord error, bytes read: " + bytesRead);
@@ -171,13 +188,16 @@ public class Recorder {
         audioRecord.stop();
         audioRecord.release();
 
-        WaveUtil.createWaveFile(mWavFilePath, buffer30Sec.array(), sampleRateInHz, channels, bytesPerSample);
+        // Save recorded audio data to file (up to 30 seconds)
+        WaveUtil.createWaveFile(mWavFilePath, outputBuffer.toByteArray(), sampleRateInHz, channels, bytesPerSample);
         sendUpdate(MSG_RECORDING_DONE);
 
         // Notify the waiting thread that recording is complete
         synchronized (fileSavedLock) {
             fileSavedLock.notify(); // Notify that recording is finished
         }
+
+//        moveFileToSdcard(mWavFilePath);
     }
 
     private float[] convertToFloatArray(ByteBuffer buffer) {
@@ -187,5 +207,31 @@ public class Recorder {
             samples[i] = buffer.getShort() / 32768.0f;
         }
         return samples;
+    }
+
+    // Move file from /data/user/0/com.whispertflite/files/MicInput.wav to
+    // sdcard path /storage/emulated/0/Android/data/com.whispertflite/files/MicInput.wav
+    // Copy and delete the original file
+    private void moveFileToSdcard(String waveFilePath) {
+        File sourceFile = new File(waveFilePath);
+        File destinationFile = new File(this.mContext.getExternalFilesDir(null), sourceFile.getName());
+        try (FileInputStream inputStream = new FileInputStream(sourceFile);
+             FileOutputStream outputStream = new FileOutputStream(destinationFile)) {
+
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = inputStream.read(buffer)) > 0) {
+                outputStream.write(buffer, 0, length);
+            }
+
+            if (sourceFile.delete()) {
+                Log.d("FileMove", "File moved successfully to " + destinationFile.getAbsolutePath());
+            } else {
+                Log.e("FileMove", "Failed to delete the original file.");
+            }
+
+        } catch (IOException e) {
+            Log.e("FileMove", "File move failed", e);
+        }
     }
 }

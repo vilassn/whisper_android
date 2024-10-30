@@ -5,7 +5,7 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.util.Log;
 
-public class AudioPlayer {
+public class Player {
 
     public interface PlaybackListener {
         void onPlaybackStarted();
@@ -16,7 +16,7 @@ public class AudioPlayer {
     private PlaybackListener playbackListener;
     private final Context context;
 
-    public AudioPlayer(Context context) {
+    public Player(Context context) {
         this.context = context;
     }
 

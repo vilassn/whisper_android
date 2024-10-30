@@ -2,22 +2,14 @@ package com.whispertflite.engine;
 
 import android.util.Log;
 
-import com.whispertflite.asr.IWhisperListener;
-
-public class WhisperEngineNative implements IWhisperEngine {
+public class WhisperEngineNative implements WhisperEngine {
     private final String TAG = "WhisperEngineNative";
     private final long nativePtr; // Native pointer to the TFLiteEngine instance
 
     private boolean mIsInitialized = false;
-    private IWhisperListener mUpdateListener = null;
 
     public WhisperEngineNative() {
         nativePtr = createTFLiteEngine();
-    }
-
-    @Override
-    public void setUpdateListener(IWhisperListener listener) {
-        mUpdateListener = listener;
     }
 
     @Override
@@ -42,16 +34,6 @@ public class WhisperEngineNative implements IWhisperEngine {
     @Override
     public String transcribeFile(String waveFile) {
         return transcribeFile(nativePtr, waveFile);
-    }
-
-    @Override
-    public void interrupt() {
-
-    }
-
-    public void updateStatus(String message) {
-        if (mUpdateListener != null)
-            mUpdateListener.onUpdateReceived(message);
     }
 
     private int loadModel(String modelPath, boolean isMultilingual) {

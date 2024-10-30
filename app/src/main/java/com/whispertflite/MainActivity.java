@@ -23,7 +23,7 @@ import androidx.core.content.ContextCompat;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.whispertflite.asr.IRecorderListener;
 import com.whispertflite.asr.IWhisperListener;
-import com.whispertflite.asr.Player;
+import com.whispertflite.asr.AudioPlayer;
 import com.whispertflite.utils.WaveUtil;
 import com.whispertflite.asr.Recorder;
 import com.whispertflite.asr.Whisper;
@@ -44,8 +44,7 @@ public class MainActivity extends AppCompatActivity {
 
     private Whisper mWhisper = null;
     private Recorder mRecorder = null;
-
-    private final Player mAudioPlayer = new Player();
+    private AudioPlayer mAudioPlayer = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,14 +102,15 @@ public class MainActivity extends AppCompatActivity {
         btnPlay.setOnClickListener(v -> {
             if(!mAudioPlayer.isPlaying()) {
                 String waveFilePath = getFilePath(waveFileName[0]);
-                mAudioPlayer.setFilePath(waveFilePath);
+                mAudioPlayer.initializePlayer(waveFilePath);
                 mAudioPlayer.startPlayback();
             } else {
                 mAudioPlayer.stopPlayback();
             }
         });
 
-        mAudioPlayer.setAudioPlayerListener(new Player.IAudioPlayerListener() {
+        mAudioPlayer = new AudioPlayer(this);
+        mAudioPlayer.setListener(new AudioPlayer.PlaybackListener() {
             @Override
             public void onPlaybackStarted() {
                 handler.post(() -> btnPlay.setText(R.string.stop));

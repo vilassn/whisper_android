@@ -64,6 +64,10 @@ public class Whisper {
         this.mUpdateListener = listener;
     }
 
+    public void loadModel(File modelPath, File vocabPath, boolean isMultilingual) {
+        loadModel(modelPath.getAbsolutePath(), vocabPath.getAbsolutePath(), isMultilingual);
+    }
+
     public void loadModel(String modelPath, String vocabPath, boolean isMultilingual) {
         try {
             mWhisperEngine.initialize(modelPath, vocabPath, isMultilingual);

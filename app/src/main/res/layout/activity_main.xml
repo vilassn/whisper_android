@@ -14,11 +14,43 @@
         android:layout_marginBottom="16dp"
         android:orientation="horizontal">
 
+        <TextView
+            android:layout_width="60dp"
+            android:layout_height="wrap_content"
+            android:textSize="15sp"
+            android:textColor="@color/colorPrimary"
+            android:text="Select model: "
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp" />
+
         <Spinner
-            android:id="@+id/spnrFiles"
+            android:id="@+id/spnrTfliteFiles"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="5"
+            android:layout_marginEnd="4dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="65dp"
+            android:layout_height="wrap_content"
+            android:textSize="15sp"
+            android:textColor="@color/colorPrimary"
+            android:text="Select input file: "
             android:layout_weight="1"
+            android:layout_marginEnd="8dp" />
+
+        <Spinner
+            android:id="@+id/spnrWaveFiles"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="5"
             android:layout_marginEnd="4dp" />
     </LinearLayout>
 

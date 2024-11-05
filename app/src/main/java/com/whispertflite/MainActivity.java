@@ -38,6 +38,8 @@ import java.util.ArrayList;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
 
+    // whisper-tiny.tflite and whisper-base-nooptim.en.tflite works well
+    private static final String DEFAULT_MODEL_TO_USE = "whisper-tiny.tflite";
     // English only model ends with extension "en.tflite"
     private static final String ENGLISH_ONLY_MODEL_EXTENSION = "en.tflite";
     private static final String ENGLISH_ONLY_VOCAB_FILE = "filters_vocab_en.bin";
@@ -55,9 +57,9 @@ public class MainActivity extends AppCompatActivity {
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
 
+    private File sdcardDataFolder = null;
     private File selectedWaveFile = null;
     private File selectedTfliteFile = null;
-    private File sdcardDataFolder = null;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
 
@@ -72,6 +74,9 @@ public class MainActivity extends AppCompatActivity {
 
         ArrayList<File> tfliteFiles = getFilesWithExtension(sdcardDataFolder, ".tflite");
         ArrayList<File> waveFiles = getFilesWithExtension(sdcardDataFolder, ".wav");
+
+        // Initialize default model to use
+        selectedTfliteFile = new File(sdcardDataFolder, DEFAULT_MODEL_TO_USE);
 
         Spinner spinnerTflite = findViewById(R.id.spnrTfliteFiles);
         spinnerTflite.setAdapter(getFileArrayAdapter(tfliteFiles));
@@ -144,6 +149,9 @@ public class MainActivity extends AppCompatActivity {
                 Log.d(TAG, "Recording is in progress... stopping...");
                 stopRecording();
             }
+
+            if (mWhisper == null)
+                initModel(selectedTfliteFile);
 
             if (mWhisper != null && mWhisper.isInProgress()) {
                 Log.d(TAG, "Whisper is already in progress...!");

@@ -61,6 +61,8 @@ public class MainActivity extends AppCompatActivity {
     private File selectedWaveFile = null;
     private File selectedTfliteFile = null;
 
+    private final boolean loopTesting = false;
+    private final SharedResource transcriptionSync = new SharedResource();
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     @Override
@@ -153,12 +155,27 @@ public class MainActivity extends AppCompatActivity {
             if (mWhisper == null)
                 initModel(selectedTfliteFile);
 
-            if (mWhisper != null && mWhisper.isInProgress()) {
-                Log.d(TAG, "Whisper is already in progress...!");
-                stopTranscription();
-            } else {
+            if (!mWhisper.isInProgress()) {
                 Log.d(TAG, "Start transcription...");
                 startTranscription(selectedWaveFile.getAbsolutePath());
+
+                // only for loop testing
+                if (loopTesting) {
+                    new Thread(() -> {
+                        for (int i = 0; i < 1000; i++) {
+                            if (!mWhisper.isInProgress())
+                                startTranscription(selectedWaveFile.getAbsolutePath());
+                            else
+                                Log.d(TAG, "Whisper is already in progress...!");
+
+                            boolean wasNotified = transcriptionSync.waitForSignalWithTimeout(15000);
+                            Log.d(TAG, wasNotified ? "Transcription Notified...!" : "Transcription Timeout...!");
+                        }
+                    }).start();
+                }
+            } else {
+                Log.d(TAG, "Whisper is already in progress...!");
+                stopTranscription();
             }
         });
 
@@ -234,6 +251,10 @@ public class MainActivity extends AppCompatActivity {
 
                 if (message.equals(Whisper.MSG_PROCESSING)) {
                     handler.post(() -> tvResult.setText(""));
+                } if (message.equals(Whisper.MSG_PROCESSING_DONE)) {
+                    // for testing
+                    if (loopTesting)
+                        transcriptionSync.sendSignal();
                 } else if (message.equals(Whisper.MSG_FILE_NOT_FOUND)) {
                     // write code as per need to handled this error
                     Log.d(TAG, "File not found error...!");
@@ -376,6 +397,34 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return filteredFiles;
+    }
+
+    static class SharedResource {
+        // Synchronized method for Thread 1 to wait for a signal with a timeout
+        public synchronized boolean waitForSignalWithTimeout(long timeoutMillis) {
+            long startTime = System.currentTimeMillis();
+
+            try {
+                wait(timeoutMillis);  // Wait for the given timeout
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();  // Restore interrupt status
+                return false;  // Thread interruption as timeout
+            }
+
+            long elapsedTime = System.currentTimeMillis() - startTime;
+
+            // Check if wait returned due to notify or timeout
+            if (elapsedTime < timeoutMillis) {
+                return true;  // Returned due to notify
+            } else {
+                return false;  // Returned due to timeout
+            }
+        }
+
+        // Synchronized method for Thread 2 to send a signal
+        public synchronized void sendSignal() {
+            notify();  // Notifies the waiting thread
+        }
     }
 
     // Test code for parallel processing

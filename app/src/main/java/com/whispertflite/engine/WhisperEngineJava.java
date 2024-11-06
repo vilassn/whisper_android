@@ -47,6 +47,15 @@ public class WhisperEngineJava implements WhisperEngine {
         return mIsInitialized;
     }
 
+    // Unload the model by closing the interpreter
+    @Override
+    public void deinitialize() {
+        if (mInterpreter != null) {
+            mInterpreter.close();
+            mInterpreter = null; // Optional: Set to null to avoid accidental reuse
+        }
+    }
+
     @Override
     public String transcribeFile(String wavePath) {
         // Calculate Mel spectrogram

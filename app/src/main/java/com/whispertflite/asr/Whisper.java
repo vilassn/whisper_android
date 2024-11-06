@@ -77,6 +77,10 @@ public class Whisper {
         }
     }
 
+    public void unloadModel() {
+        mWhisperEngine.deinitialize();
+    }
+
     public void setAction(Action action) {
         this.mAction = action;
     }

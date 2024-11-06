@@ -232,6 +232,12 @@ std::string TFLiteEngine::transcribeFile(const char *waveFile) {
 void TFLiteEngine::freeModel() {
     std::cout << "Entering " << __func__ << "()" << std::endl;
 
+    if (g_whisper_tflite.interpreter)
+        g_whisper_tflite.interpreter.reset();  // Reset interpreter to release resources
+
+    if (g_whisper_tflite.model)
+        g_whisper_tflite.model.reset();        // Reset model to free memory
+
     if (g_whisper_tflite.buffer) {
         std::cout << __func__ << ": free buffer " << g_whisper_tflite.buffer << " memory" << std::endl;
         delete[] g_whisper_tflite.buffer;

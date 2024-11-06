@@ -27,6 +27,11 @@ public class WhisperEngineNative implements WhisperEngine {
     }
 
     @Override
+    public void deinitialize() {
+        freeModel();
+    }
+
+    @Override
     public String transcribeBuffer(float[] samples) {
         return transcribeBuffer(nativePtr, samples);
     }

@@ -85,12 +85,8 @@ public class MainActivity extends AppCompatActivity {
         spinnerTflite.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                // Cast item to File and get the file name
-                selectedTfliteFile = (File) parent.getItemAtPosition(position);
-
-                // unload previous model and load selected one
                 deinitModel();
-                initModel(selectedTfliteFile);
+                selectedTfliteFile = (File) parent.getItemAtPosition(position);
             }
 
             @Override
@@ -271,7 +267,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void deinitModel() {
         if (mWhisper != null) {
-            //mWhisper.unload();
+            mWhisper.unloadModel();
             mWhisper = null;
         }
     }

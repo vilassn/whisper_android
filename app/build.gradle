@@ -48,19 +48,32 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.10.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
 
-    implementation 'org.tensorflow:tensorflow-lite:2.11.0'
-    implementation 'org.tensorflow:tensorflow-lite-support:0.4.3'
-//    implementation 'org.tensorflow:tensorflow-lite-api:2.11.0'
-//    implementation 'org.tensorflow:tensorflow-lite-support-api:0.4.3'
-//    implementation 'org.tensorflow:tensorflow-lite-select-tf-ops:2.11.0'
+    // Main TensorFlow Lite library
+    implementation 'org.tensorflow:tensorflow-lite:2.14.0'
+    implementation 'org.tensorflow:tensorflow-lite-support:0.4.4'
 
-//    implementation 'org.tensorflow:tensorflow-lite-gpu:2.11.0'
-//    implementation 'org.tensorflow:tensorflow-lite-gpu-api:2.11.0'
+    // TensorFlow Lite GPU delegate for acceleration
+//    implementation 'org.tensorflow:tensorflow-lite-gpu:2.14.0'
+//    implementation 'org.tensorflow:tensorflow-lite-gpu-api:2.14.0'
+//    implementation 'org.tensorflow:tensorflow-lite-gpu-delegate-plugin:0.4.2'
+//    implementation 'com.google.android.gms:play-services-tflite-gpu:16.2.0' // Google Play Services TFLite library
+
+    // Import tflite dependencies
+//    implementation 'com.google.ai.edge.litert:litert:1.0.1'
+//    implementation 'com.google.ai.edge.litert:litert-support:1.0.1'
+//
+//    // The GPU delegate library is optional. Depend on it as needed.
+//    implementation 'com.google.ai.edge.litert:litert-gpu:1.0.1'
+
+    // LiteRT dependencies for Google Play services
+//    implementation 'com.google.android.gms:play-services-tflite-java:16.1.0'
+
+    // Optional: include LiteRT Support Library
+//    implementation 'com.google.android.gms:play-services-tflite-support:16.1.0'
 
 //    implementation files('libs/jlibrosa-1.1.8-SNAPSHOT-jar-with-dependencies.jar')
 }

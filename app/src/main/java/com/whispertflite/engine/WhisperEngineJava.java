@@ -1,13 +1,20 @@
 package com.whispertflite.engine;
 
+import android.content.Context;
 import android.util.Log;
 
+//import com.google.android.gms.tflite.client.TfLiteInitializationOptions;
+//import com.google.android.gms.tflite.gpu.support.TfLiteGpu;
+//import com.google.android.gms.tflite.java.TfLite;
 import com.whispertflite.utils.WaveUtil;
 import com.whispertflite.utils.WhisperUtil;
 
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.Tensor;
+//import org.tensorflow.lite.gpu.CompatibilityList;
+//import org.tensorflow.lite.gpu.GpuDelegate;
+//import org.tensorflow.lite.nnapi.NnApiDelegate;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
 import java.io.FileInputStream;
@@ -20,8 +27,14 @@ public class WhisperEngineJava implements WhisperEngine {
     private final String TAG = "WhisperEngineJava";
     private final WhisperUtil mWhisperUtil = new WhisperUtil();
 
+    private Context mContext;
     private boolean mIsInitialized = false;
     private Interpreter mInterpreter = null;
+//    private GpuDelegate gpuDelegate;
+
+    public WhisperEngineJava(Context context) {
+        mContext = context;
+    }
 
     @Override
     public boolean isInitialized() {
@@ -86,6 +99,45 @@ public class WhisperEngineJava implements WhisperEngine {
         // Set the number of threads for inference
         Interpreter.Options options = new Interpreter.Options();
         options.setNumThreads(Runtime.getRuntime().availableProcessors());
+//        options.setUseXNNPACK(true);
+
+//        boolean isNNAPI = true;
+//        if (isNNAPI) {
+//            // Initialize interpreter with NNAPI delegate for Android Pie or above
+//            NnApiDelegate nnapiDelegate = new NnApiDelegate();
+//            options.addDelegate(nnapiDelegate);
+////                    options.setUseNNAPI(false);
+//                    options.setAllowFp16PrecisionForFp32(true);
+//                    options.setAllowBufferHandleOutput(true);
+//            options.setUseNNAPI(true);
+//        }
+
+        // Check if GPU delegate is available asynchronously
+//        TfLiteGpu.isGpuDelegateAvailable(mContext).addOnCompleteListener(task -> {
+//            if (task.isSuccessful() && task.getResult()) {
+//                // GPU is available; initialize the interpreter with GPU delegate
+////                    GpuDelegate gpuDelegate = new GpuDelegate();
+////                    Interpreter.Options options = new Interpreter.Options().addDelegate(gpuDelegate);
+////                    tflite = new Interpreter(loadModelFile(), options);
+//                TfLite.initialize(mContext, TfLiteInitializationOptions.builder().setEnableGpuDelegateSupport(true).build());
+//                Log.d(TAG, "GPU is available; initialize the interpreter with GPU delegate........................");
+//            } else {
+//                // GPU is not available; fallback to CPU
+////                    tflite = new Interpreter(loadModelFile());
+////                    System.out.println("Initialized with CPU.");
+//                Log.d(TAG, "GPU is not available; fallback to CPU........................");
+//            }
+//        });
+        
+//        boolean isGPU = true;
+//        if (isGPU) {
+//            gpuDelegate = new GpuDelegate();
+//            options.setPrecisionLossAllowed(true); // It seems that the default is true
+//            options.setInferencePreference(GpuDelegate.Options.INFERENCE_PREFERENCE_SUSTAINED_SPEED);
+//             .setPrecisionLossAllowed(true) // Allow FP16 precision for faster performance
+//                    .setInferencePreference(GpuDelegate.Options.INFERENCE_PREFERENCE_FAST_SINGLE_ANSWER);
+//            options.addDelegate(gpuDelegate);
+//        }
 
         mInterpreter = new Interpreter(tfliteModel, options);
     }
@@ -107,14 +159,12 @@ public class WhisperEngineJava implements WhisperEngine {
         // Create input tensor
         Tensor inputTensor = mInterpreter.getInputTensor(0);
         TensorBuffer inputBuffer = TensorBuffer.createFixedSize(inputTensor.shape(), inputTensor.dataType());
-        Log.d(TAG, "Input Tensor Dump ===>");
-        printTensorDump(inputTensor);
+//        printTensorDump("Input Tensor Dump ===>", inputTensor);
 
         // Create output tensor
         Tensor outputTensor = mInterpreter.getOutputTensor(0);
         TensorBuffer outputBuffer = TensorBuffer.createFixedSize(outputTensor.shape(), DataType.FLOAT32);
-        Log.d(TAG, "Output Tensor Dump ===>");
-        printTensorDump(outputTensor);
+//        printTensorDump("Output Tensor Dump ===>", outputTensor);
 
         // Load input data
         int inputSize = inputTensor.shape()[0] * inputTensor.shape()[1] * inputTensor.shape()[2] * Float.BYTES;
@@ -134,8 +184,10 @@ public class WhisperEngineJava implements WhisperEngine {
 
         inputBuffer.loadBuffer(inputBuf);
 
+//        Log.d(TAG, "Before inference...");
         // Run inference
         mInterpreter.run(inputBuffer.getBuffer(), outputBuffer.getBuffer());
+//        Log.d(TAG, "After inference...");
 
         // Retrieve the results
         int outputLen = outputBuffer.getIntArray().length;
@@ -149,7 +201,7 @@ public class WhisperEngineJava implements WhisperEngine {
             // Get word for token and Skip additional token
             if (token < mWhisperUtil.getTokenEOT()) {
                 String word = mWhisperUtil.getWordFromToken(token);
-                Log.d(TAG, "Adding token: " + token + ", word: " + word);
+                //Log.d(TAG, "Adding token: " + token + ", word: " + word);
                 result.append(word);
             } else {
                 if (token == mWhisperUtil.getTokenTranscribe())
@@ -166,7 +218,8 @@ public class WhisperEngineJava implements WhisperEngine {
         return result.toString();
     }
 
-    private void printTensorDump(Tensor tensor) {
+    private void printTensorDump(String message, Tensor tensor) {
+        Log.d(TAG,"Output Tensor Dump ===>");
         Log.d(TAG, "  shape.length: " + tensor.shape().length);
         for (int i = 0; i < tensor.shape().length; i++)
             Log.d(TAG, "    shape[" + i + "]: " + tensor.shape()[i]);

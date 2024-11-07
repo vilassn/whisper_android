@@ -1,14 +1,17 @@
 package com.whispertflite.engine;
 
+import android.content.Context;
 import android.util.Log;
 
 public class WhisperEngineNative implements WhisperEngine {
     private final String TAG = "WhisperEngineNative";
     private final long nativePtr; // Native pointer to the TFLiteEngine instance
 
+    private Context mContext;
     private boolean mIsInitialized = false;
 
-    public WhisperEngineNative() {
+    public WhisperEngineNative(Context context) {
+        mContext = context;
         nativePtr = createTFLiteEngine();
     }
 

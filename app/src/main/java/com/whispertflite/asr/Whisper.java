@@ -48,8 +48,8 @@ public class Whisper {
     private volatile boolean taskAvailable = false;
 
     public Whisper(Context context) {
-//        this.mWhisperEngine = new WhisperEngineJava();
-        this.mWhisperEngine = new WhisperEngineNative();
+//        this.mWhisperEngine = new WhisperEngineJava(context);
+        this.mWhisperEngine = new WhisperEngineNative(context);
 
         // Start thread for file transcription for file transcription
         Thread threadTranscbFile = new Thread(this::transcribeFileLoop);

@@ -7,7 +7,7 @@ public class WhisperEngineNative implements WhisperEngine {
     private final String TAG = "WhisperEngineNative";
     private final long nativePtr; // Native pointer to the TFLiteEngine instance
 
-    private Context mContext;
+    private final Context mContext;
     private boolean mIsInitialized = false;
 
     public WhisperEngineNative(Context context) {

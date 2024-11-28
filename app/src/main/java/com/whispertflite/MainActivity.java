@@ -40,8 +40,8 @@ public class MainActivity extends AppCompatActivity {
 
     // whisper-tiny.tflite and whisper-base-nooptim.en.tflite works well
     private static final String DEFAULT_MODEL_TO_USE = "whisper-tiny.tflite";
-    // English only model ends with extension "en.tflite"
-    private static final String ENGLISH_ONLY_MODEL_EXTENSION = "en.tflite";
+    // English only model ends with extension ".en.tflite"
+    private static final String ENGLISH_ONLY_MODEL_EXTENSION = ".en.tflite";
     private static final String ENGLISH_ONLY_VOCAB_FILE = "filters_vocab_en.bin";
     private static final String MULTILINGUAL_VOCAB_FILE = "filters_vocab_multilingual.bin";
     private static final String[] EXTENSIONS_TO_COPY = {"tflite", "bin", "wav", "pcm"};
@@ -61,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
     private File selectedWaveFile = null;
     private File selectedTfliteFile = null;
 
+    private long startTime = 0;
     private final boolean loopTesting = false;
     private final SharedResource transcriptionSync = new SharedResource();
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -243,22 +244,27 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onUpdateReceived(String message) {
                 Log.d(TAG, "Update is received, Message: " + message);
-                handler.post(() -> tvStatus.setText(message));
 
                 if (message.equals(Whisper.MSG_PROCESSING)) {
+                    handler.post(() -> tvStatus.setText(message));
                     handler.post(() -> tvResult.setText(""));
+                    startTime = System.currentTimeMillis();
                 } if (message.equals(Whisper.MSG_PROCESSING_DONE)) {
+//                    handler.post(() -> tvStatus.setText(message));
                     // for testing
                     if (loopTesting)
                         transcriptionSync.sendSignal();
                 } else if (message.equals(Whisper.MSG_FILE_NOT_FOUND)) {
-                    // write code as per need to handled this error
+                    handler.post(() -> tvStatus.setText(message));
                     Log.d(TAG, "File not found error...!");
                 }
             }
 
             @Override
             public void onResultReceived(String result) {
+                long timeTaken = System.currentTimeMillis() - startTime;
+                handler.post(() -> tvStatus.setText("Processing done in " + timeTaken + "ms"));
+
                 Log.d(TAG, "Result: " + result);
                 handler.post(() -> tvResult.append(result));
             }

@@ -27,7 +27,7 @@ public class WhisperEngineJava implements WhisperEngine {
     private final String TAG = "WhisperEngineJava";
     private final WhisperUtil mWhisperUtil = new WhisperUtil();
 
-    private Context mContext;
+    private final Context mContext;
     private boolean mIsInitialized = false;
     private Interpreter mInterpreter = null;
 //    private GpuDelegate gpuDelegate;

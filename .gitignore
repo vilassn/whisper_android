@@ -1,18 +1,85 @@
-*.iml
-.gradle
-/local.properties
-.idea
-/.idea
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-app/src/main/cpp/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
+whisper_native/app/.cxx/
+
+# General build directories
+whisper_java/build/
+whisper_native/build/
+whisper_java/out/
+whisper_native/out/
+
+# Android specific
+whisper_java/*.apk
+whisper_native/*.apk
+whisper_java/*.ap_
+whisper_native/*.ap_
+whisper_java/*.dex
+whisper_native/*.dex
+whisper_java/*.class
+whisper_native/*.class
+whisper_java/*.so
+whisper_native/*.so
+whisper_java/*.jar
+whisper_native/*.jar
+whisper_java/*.aar
+whisper_native/*.aar
+whisper_java/*.war
+whisper_native/*.war
+
+# Gradle specific
+whisper_java/.gradle/
+whisper_native/.gradle/
+whisper_java/local.properties
+whisper_native/local.properties
+whisper_java/gradle.properties
+whisper_native/gradle.properties
+whisper_java/gradlew
+whisper_native/gradlew
+whisper_java/gradlew.bat
+whisper_native/gradlew.bat
+whisper_java/gradle-wrapper.jar
+whisper_native/gradle-wrapper.jar
+whisper_java/gradle/wrapper/gradle-wrapper.properties
+whisper_native/gradle/wrapper/gradle-wrapper.properties
+
+# IntelliJ IDEA / Android Studio
+whisper_java/.idea/
+whisper_native/.idea/
+whisper_java/*.iml
+whisper_native/*.iml
+whisper_java/*.iws
+whisper_native/*.iws
+whisper_java/*.ipr
+whisper_native/*.ipr
+
+# Log files
+whisper_java/*.log
+whisper_native/*.log
+
+# Temporary files
+whisper_java/*.tmp
+whisper_native/*.tmp
+whisper_java/*.temp
+whisper_native/*.temp
+
+# OS specific
+whisper_java/.DS_Store
+whisper_native/.DS_Store
+whisper_java/Thumbs.db
+whisper_native/Thumbs.db
+
+# Coverage and reports
+whisper_java/coverage/
+whisper_native/coverage/
+whisper_java/*.lcov
+whisper_native/*.lcov
+whisper_java/*.clover
+whisper_native/*.clover
+whisper_java/*.html
+whisper_native/*.html
+
+# User-specific configuration files
+whisper_java/*.swp
+whisper_native/*.swp
+whisper_java/*.swo
+whisper_native/*.swo
+whisper_java/*.swn
+whisper_native/*.swn

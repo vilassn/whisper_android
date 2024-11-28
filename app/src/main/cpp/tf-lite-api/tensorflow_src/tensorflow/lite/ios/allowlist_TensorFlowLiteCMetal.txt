@@ -1,3 +1,0 @@
-_TFLGpuDelegateCreate
-_TFLGpuDelegateDelete
-_TFLGpuDelegateBindMetalBufferToTensor

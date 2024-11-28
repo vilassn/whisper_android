@@ -1,9 +1,36 @@
+# Offline Speech Recognition with Whisper & TFLite
 
-# Offline Speech Recognition with OpenAI Whisper and TensorFlow Lite
+This repository offers two Android apps leveraging the OpenAI Whisper speech-to-text model. One app uses the TensorFlow Lite Java API for easy Java integration, while the other employs the TensorFlow Lite Native API for enhanced performance. It also includes a Python script for model generation and pre-built APKs for straightforward deployment.
 
-This guide explains how to integrate Whisper and Recorder class in Android apps for audio recording and speech recognition.
+
+## 📂 Folder Structure
+
+- **whisper_java**:  
+  An Android app using the TensorFlow Lite Java API for model inference with Whisper, ideal for Java developers integrating TensorFlow Lite.
+
+- **whisper_native**:  
+  An Android app utilizing the TensorFlow Lite Native API for model inference, offering optimized performance for developers preferring native code.
+
+- **models_and_scripts**:  
+  Contains a Python script to convert Whisper models into TensorFlow Lite format and includes pre-generated TFLite models.
+  - `generate_model.py`: Script for generating TFLite models.
+  - `generated_model`: Directory with optimized TFLite models.
+
+- **demo_and_apk**:  
+  Contains pre-built APKs for direct Android installation.
+
+## 🚀 How to Use
+
+- **Running the Whisper Java App**
+  1. Navigate to the `whisper_java` folder.
+  2. Open the project in Android Studio.
+  3. Build and run on an Android device or emulator.
+
+- **Running the Whisper Native App**
+  - Follow similar steps as above for the `whisper_native` app.
 
 ## Whisper ASR Integration Guide
+This guide explains how to integrate Whisper and Recorder class in Android apps for audio recording and speech recognition.
 
 Here are separate code snippets for using `Whisper` and `Recorder`:
 
@@ -15,8 +42,8 @@ Here are separate code snippets for using `Whisper` and `Recorder`:
 Whisper mWhisper = new Whisper(this); // Create Whisper instance
 
 // Load model and vocabulary for Whisper
-String modelPath = getFilePath("whisper-tiny.tflite"); // Provide model file path
-String vocabPath = getFilePath("filters_vocab_multilingual.bin"); // Provide vocabulary file path
+String modelPath = "path/to/whisper-tiny.tflite"; // Provide model file path
+String vocabPath = "path/to/filters_vocab_multilingual.bin"; // Provide vocabulary file path
 mWhisper.loadModel(modelPath, vocabPath, true); // Load model and set multilingual mode
 
 // Set a listener for Whisper to handle updates and results
@@ -36,7 +63,7 @@ mWhisper.setListener(new IWhisperListener() {
 **Transcription:**
 ```java
 // Set the audio file path for transcription. Audio format should be in 16K, mono, 16bits
-String waveFilePath = getFilePath("your_audio_file.wav"); // Provide audio file path
+String waveFilePath = "path/to/your_audio_file.wav"; // Provide audio file path
 mWhisper.setFilePath(waveFilePath); // Set audio file path
 
 // Start transcription
@@ -79,7 +106,7 @@ mRecorder.setListener(new IRecorderListener() {
 checkRecordPermission(); // Check and request recording permissions
 
 // Set the audio file path for recording. It record audio in 16K, mono, 16bits format
-String waveFilePath = getFilePath("your_audio_file.wav"); // Provide audio file path
+String waveFilePath = "path/to/your_audio_file.wav"; // Provide audio file path
 mRecorder.setFilePath(waveFilePath); // Set audio file path
 
 // Start recording

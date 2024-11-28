@@ -1,0 +1,47 @@
+{
+  "name": "flatbuffers",
+  "version": "22.10.26",
+  "description": "Memory Efficient Serialization Library",
+  "files": [
+    "js/**/*.js",
+    "js/**/*.d.ts",
+    "mjs/**/*.js",
+    "mjs/**/*.d.ts",
+    "ts/**/*.ts"
+  ],
+  "main": "js/index.js",
+  "module": "mjs/index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "npm run compile && cd tests/ts && python3 ./TypeScriptTest.py",
+    "lint": "eslint ts",
+    "compile": "tsc && tsc -p tsconfig.mjs.json && rollup -c",
+    "prepublishOnly": "npm install --only=dev && npm run compile"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/google/flatbuffers.git"
+  },
+  "keywords": [
+    "flatbuffers"
+  ],
+  "author": "The FlatBuffers project",
+  "license": "SEE LICENSE IN LICENSE.txt",
+  "bugs": {
+    "url": "https://github.com/google/flatbuffers/issues"
+  },
+  "homepage": "https://google.github.io/flatbuffers/",
+  "dependencies": {},
+  "devDependencies": {
+    "@bazel/typescript": "5.2.0",
+    "@types/node": "18.7.16",
+    "@typescript-eslint/eslint-plugin": "^5.36.2",
+    "@typescript-eslint/parser": "^5.36.2",
+    "eslint": "^8.23.1",
+    "rollup": "^2.79.0",
+    "typescript": "^4.8.3"
+  }
+}

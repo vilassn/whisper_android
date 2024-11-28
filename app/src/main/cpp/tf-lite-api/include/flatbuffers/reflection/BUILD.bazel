@@ -1,5 +1,0 @@
-filegroup(
-    name = "reflection_fbs_schema",
-    srcs = ["reflection.fbs"],
-    visibility = ["//visibility:public"],
-)

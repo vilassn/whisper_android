@@ -243,5 +243,13 @@ void TFLiteEngine::freeModel() {
         delete[] g_whisper_tflite.buffer;
     }
 
+    // Set the flag to false to avoid issues in the re-initialization of the model
+    if(g_whisper_tflite.is_whisper_tflite_initialized){
+        g_whisper_tflite.is_whisper_tflite_initialized = false;
+    }
+
+    // Reset the whisper_vocab structure to clear the vocab data
+    g_vocab.reset();
+
     std::cout << "Exiting " << __func__ << "()" << std::endl;
 }

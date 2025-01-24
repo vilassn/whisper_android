@@ -43,6 +43,18 @@ struct whisper_vocab {
 
     static const int token_translwordate = 50358;
     static const int token_transcribe = 50359;
+
+    // Reset the whisper_vocab structure
+    void reset() {
+        id_to_token.clear();
+        n_vocab_additional = 51864;
+        token_eot = 50256;
+        token_sot = 50257;
+        token_prev = 50360;
+        token_solm = 50361;
+        token_not = 50362;
+        token_beg = 50363;
+    }
 };
 
 // Global whisper_vocab instance

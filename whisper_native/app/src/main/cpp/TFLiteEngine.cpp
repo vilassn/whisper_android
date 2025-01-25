@@ -84,7 +84,7 @@ int TFLiteEngine:: loadModel(const char *modelPath, const bool isMultilingual) {
         }
 
         // add additional vocab ids
-        int n_vocab_additional = 51864; 
+        int n_vocab_additional = 51864;
         if (isMultilingual) {
             n_vocab_additional = 51865;
             g_vocab.token_eot++;
@@ -213,7 +213,7 @@ std::string TFLiteEngine::transcribeBuffer(std::vector<float> samples) {
         if (output_int[i] == g_vocab.token_eot) {
             break;
         }
-        
+
         if (output_int[i] < g_vocab.token_eot) {
             text += whisper_token_to_str(output_int[i]);
         }
@@ -242,6 +242,14 @@ void TFLiteEngine::freeModel() {
         std::cout << __func__ << ": free buffer " << g_whisper_tflite.buffer << " memory" << std::endl;
         delete[] g_whisper_tflite.buffer;
     }
+
+    // Set the flag to false to avoid issues in the re-initialization of the model
+    if (g_whisper_tflite.is_whisper_tflite_initialized) {
+        g_whisper_tflite.is_whisper_tflite_initialized = false;
+    }
+
+    // Reset the whisper_vocab structure to clear the vocab data
+    g_vocab.reset();
 
     std::cout << "Exiting " << __func__ << "()" << std::endl;
 }

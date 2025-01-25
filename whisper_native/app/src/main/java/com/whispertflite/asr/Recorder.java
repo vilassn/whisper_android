@@ -38,6 +38,7 @@ public class Recorder {
     public static final String ACTION_RECORD = "Record";
     public static final String MSG_RECORDING = "Recording...";
     public static final String MSG_RECORDING_DONE = "Recording done...!";
+    public static final int RECORDING_DURATION = 60; //60 seconds
 
     private final Context mContext;
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
@@ -157,8 +158,10 @@ public class Recorder {
         audioRecord.startRecording();
 
         // Calculate maximum byte counts for 30 seconds (for saving)
-        int bytesForThirtySeconds = sampleRateInHz * bytesPerSample * channels * 30;
-        int bytesForThreeSeconds = sampleRateInHz * bytesPerSample * channels * 3;
+        int bytesForOneSecond = sampleRateInHz * bytesPerSample * channels;
+        int bytesForThreeSeconds = bytesForOneSecond * 3;
+        int bytesForThirtySeconds = bytesForOneSecond * 30;
+        int bytesForSixtySeconds = bytesForOneSecond * RECORDING_DURATION;
 
         ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream(); // Buffer for saving data in wave file
         ByteArrayOutputStream realtimeBuffer = new ByteArrayOutputStream(); // Buffer for real-time processing
@@ -166,7 +169,7 @@ public class Recorder {
         byte[] audioData = new byte[bufferSize];
         int totalBytesRead = 0;
 
-        while (mInProgress.get() && totalBytesRead < bytesForThirtySeconds) {
+        while (mInProgress.get() && totalBytesRead < bytesForSixtySeconds) {
             int bytesRead = audioRecord.read(audioData, 0, bufferSize);
             if (bytesRead > 0) {
                 outputBuffer.write(audioData, 0, bytesRead);  // Save all bytes read up to 30 seconds

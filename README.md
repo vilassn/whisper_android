@@ -133,3 +133,13 @@ Whisper ASR is a powerful tool for transcribing speech into text. However, keep 
 
 
 Enjoy using the Whisper ASR Android app to enhance your speech recognition capabilities!
+
+## 💖 Support This Project
+Maintaining this project requires time and effort. If you find it useful and would like to support its development, you can contribute via PayPal:
+
+🔹 PayPal Direct Link: [https://www.paypal.com/vilassn](https://www.paypal.me/vilassn)
+
+For any inquiries or business-related discussions, feel free to reach out:
+📧 Email: vilassninawe@gmail.com
+
+Thank you for your support! 🚀

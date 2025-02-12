@@ -127,6 +127,9 @@ Please adapt these code snippets to your specific use case, provide the correct 
 ## Demo Video
 [![Video](https://img.youtube.com/vi/w9pohi9NQrg/0.jpg)](https://www.youtube.com/watch?v=w9pohi9NQrg)
 
+## Live Transcription
+[![Video](https://img.youtube.com/vi/qUg6_v7b9Io/0.jpg)](https://www.youtube.com/watch?v=qUg6_v7b9Io)
+
 ## Important Note
 
 Whisper ASR is a powerful tool for transcribing speech into text. However, keep in mind that handling audio data and transcriptions may require careful synchronization and error handling in your Android application to ensure a smooth user experience.

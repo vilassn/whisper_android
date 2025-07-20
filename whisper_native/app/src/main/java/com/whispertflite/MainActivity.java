@@ -4,8 +4,10 @@ import android.Manifest;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -18,6 +20,8 @@ import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
@@ -46,12 +50,18 @@ public class MainActivity extends AppCompatActivity {
     private static final String MULTILINGUAL_VOCAB_FILE = "filters_vocab_multilingual.bin";
     private static final String[] EXTENSIONS_TO_COPY = {"tflite", "bin", "wav", "pcm"};
 
+    private static final int REQUEST_CODE_PERMISSION = 101;
+    private ActivityResultLauncher<Intent> filePickerLauncher;
+
+
     private TextView tvStatus;
     private TextView tvResult;
     private FloatingActionButton fabCopy;
     private Button btnRecord;
     private Button btnPlay;
     private Button btnTranscribe;
+    private Button btnSelectFile;
+
 
     private Player mPlayer = null;
     private Recorder mRecorder = null;
@@ -76,7 +86,6 @@ public class MainActivity extends AppCompatActivity {
         copyAssetsToSdcard(this, sdcardDataFolder, EXTENSIONS_TO_COPY);
 
         ArrayList<File> tfliteFiles = getFilesWithExtension(sdcardDataFolder, ".tflite");
-        ArrayList<File> waveFiles = getFilesWithExtension(sdcardDataFolder, ".wav");
 
         // Initialize default model to use
         selectedTfliteFile = new File(sdcardDataFolder, DEFAULT_MODEL_TO_USE);
@@ -96,27 +105,101 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Spinner spinnerWave = findViewById(R.id.spnrWaveFiles);
-        spinnerWave.setAdapter(getFileArrayAdapter(waveFiles));
-        spinnerWave.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                // Cast item to File and get the file name
-                selectedWaveFile = (File) parent.getItemAtPosition(position);
+        btnSelectFile = findViewById(R.id.btnSelectFile);
+        btnSelectFile.setOnClickListener(v -> openFilePicker());
 
-                // Check if the selected file is the recording file
-                if (selectedWaveFile.getName().equals(WaveUtil.RECORDING_FILE)) {
-                    btnRecord.setVisibility(View.VISIBLE);
+        filePickerLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK) {
+                        Intent data = result.getData();
+                        if (data != null) {
+                            Uri uri = data.getData();
+                            if (uri != null) {
+                                try {
+                                    File inputFile = new File(uri.getPath());
+                                    File outputFile = new File(sdcardDataFolder, "converted.wav");
+                                    convertAudioToWav(inputFile, outputFile);
+                                    selectedWaveFile = outputFile;
+                                    tvStatus.setText("File Selected: " + selectedWaveFile.getName());
+                                } catch (IOException e) {
+                                    Log.e(TAG, "Error converting file", e);
+                                    tvStatus.setText("Error converting file");
+                                }
+                            }
+                        }
+                    }
+                });
+    }
+
+    private void convertAudioToWav(File inputFile, File outputFile) throws IOException {
+        MediaExtractor extractor = new MediaExtractor();
+        extractor.setDataSource(inputFile.getAbsolutePath());
+
+        int trackIndex = -1;
+        MediaFormat format = null;
+        for (int i = 0; i < extractor.getTrackCount(); i++) {
+            format = extractor.getTrackFormat(i);
+            String mime = format.getString(MediaFormat.KEY_MIME);
+            if (mime.startsWith("audio/")) {
+                trackIndex = i;
+                break;
+            }
+        }
+
+        if (trackIndex == -1) {
+            throw new IOException("No audio track found in " + inputFile.getName());
+        }
+
+        extractor.selectTrack(trackIndex);
+
+        MediaCodec decoder = MediaCodec.createDecoderByType(format.getString(MediaFormat.KEY_MIME));
+        decoder.configure(format, null, null, 0);
+        decoder.start();
+
+        MediaMuxer muxer = new MediaMuxer(outputFile.getAbsolutePath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+        int outputTrackIndex = -1;
+
+        MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+
+        boolean done = false;
+        while (!done) {
+            int inputBufferIndex = decoder.dequeueInputBuffer(10000);
+            if (inputBufferIndex >= 0) {
+                ByteBuffer inputBuffer = decoder.getInputBuffer(inputBufferIndex);
+                int sampleSize = extractor.readSampleData(inputBuffer, 0);
+                if (sampleSize < 0) {
+                    decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                    done = true;
                 } else {
-                    btnRecord.setVisibility(View.GONE);
+                    decoder.queueInputBuffer(inputBufferIndex, 0, sampleSize, extractor.getSampleTime(), 0);
+                    extractor.advance();
                 }
             }
 
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-                // Handle case when nothing is selected, if needed
+            int outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 10000);
+            if (outputBufferIndex >= 0) {
+                ByteBuffer outputBuffer = decoder.getOutputBuffer(outputBufferIndex);
+                if (outputTrackIndex == -1) {
+                    MediaFormat newFormat = decoder.getOutputFormat();
+                    outputTrackIndex = muxer.addTrack(newFormat);
+                    muxer.start();
+                }
+                muxer.writeSampleData(outputTrackIndex, outputBuffer, bufferInfo);
+                decoder.releaseOutputBuffer(outputBufferIndex, false);
+            } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                // Not using this, using the format from the first buffer
             }
-        });
+
+            if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                break;
+            }
+        }
+
+        decoder.stop();
+        decoder.release();
+        extractor.release();
+        muxer.stop();
+        muxer.release();
 
         // Implementation of record button functionality
         btnRecord = findViewById(R.id.btnRecord);
@@ -278,6 +361,13 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void openFilePicker() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("audio/*");
+        filePickerLauncher.launch(intent);
+    }
+
+
     private @NonNull ArrayAdapter<File> getFileArrayAdapter(ArrayList<File> waveFiles) {
         ArrayAdapter<File> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, waveFiles) {
             @Override
@@ -301,22 +391,40 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkRecordPermission() {
-        int permission = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO);
-        if (permission == PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "Record permission is granted");
+        String[] permissions = {
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+        };
+
+        boolean allPermissionsGranted = true;
+        for (String permission : permissions) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                allPermissionsGranted = false;
+                break;
+            }
+        }
+
+        if (allPermissionsGranted) {
+            Log.d(TAG, "All permissions are granted");
         } else {
-            Log.d(TAG, "Requesting record permission");
-            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 0);
+            Log.d(TAG, "Requesting permissions");
+            requestPermissions(permissions, REQUEST_CODE_PERMISSION);
         }
     }
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "Record permission is granted");
-        } else {
-            Log.d(TAG, "Record permission is not granted");
+
+        if (requestCode == REQUEST_CODE_PERMISSION) {
+            for (int i = 0; i < permissions.length; i++) {
+                if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, permissions[i] + " is granted");
+                } else {
+                    Log.d(TAG, permissions[i] + " is not granted");
+                }
+            }
         }
     }
 

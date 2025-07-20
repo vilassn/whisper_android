@@ -38,21 +38,13 @@
         android:layout_marginBottom="16dp"
         android:orientation="horizontal">
 
-        <TextView
-            android:layout_width="65dp"
-            android:layout_height="wrap_content"
-            android:textSize="15sp"
-            android:textColor="@color/colorPrimary"
-            android:text="Select input file: "
-            android:layout_weight="1"
-            android:layout_marginEnd="8dp" />
-
-        <Spinner
-            android:id="@+id/spnrWaveFiles"
+        <Button
+            android:id="@+id/btnSelectFile"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="5"
-            android:layout_marginEnd="4dp" />
+            android:layout_weight="1"
+            android:text="Select File" />
+
     </LinearLayout>
 
     <LinearLayout

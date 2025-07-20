@@ -1,7 +1,12 @@
 package com.whispertflite.utils;
 
+import android.media.MediaCodec;
+import android.media.MediaExtractor;
+import android.media.MediaFormat;
+import android.media.MediaMuxer;
 import android.util.Log;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -12,6 +17,77 @@ import java.nio.charset.StandardCharsets;
 public class WaveUtil {
     public static final String TAG = "WaveUtil";
     public static final String RECORDING_FILE = "MicInput.wav";
+
+    public static void convertAudioToWav(File inputFile, File outputFile) throws IOException {
+        MediaExtractor extractor = new MediaExtractor();
+        extractor.setDataSource(inputFile.getAbsolutePath());
+
+        int trackIndex = -1;
+        MediaFormat format = null;
+        for (int i = 0; i < extractor.getTrackCount(); i++) {
+            format = extractor.getTrackFormat(i);
+            String mime = format.getString(MediaFormat.KEY_MIME);
+            if (mime.startsWith("audio/")) {
+                trackIndex = i;
+                break;
+            }
+        }
+
+        if (trackIndex == -1) {
+            throw new IOException("No audio track found in " + inputFile.getName());
+        }
+
+        extractor.selectTrack(trackIndex);
+
+        MediaCodec decoder = MediaCodec.createDecoderByType(format.getString(MediaFormat.KEY_MIME));
+        decoder.configure(format, null, null, 0);
+        decoder.start();
+
+        MediaMuxer muxer = new MediaMuxer(outputFile.getAbsolutePath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+        int outputTrackIndex = -1;
+
+        MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+
+        boolean done = false;
+        while (!done) {
+            int inputBufferIndex = decoder.dequeueInputBuffer(10000);
+            if (inputBufferIndex >= 0) {
+                ByteBuffer inputBuffer = decoder.getInputBuffer(inputBufferIndex);
+                int sampleSize = extractor.readSampleData(inputBuffer, 0);
+                if (sampleSize < 0) {
+                    decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                    done = true;
+                } else {
+                    decoder.queueInputBuffer(inputBufferIndex, 0, sampleSize, extractor.getSampleTime(), 0);
+                    extractor.advance();
+                }
+            }
+
+            int outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 10000);
+            if (outputBufferIndex >= 0) {
+                ByteBuffer outputBuffer = decoder.getOutputBuffer(outputBufferIndex);
+                if (outputTrackIndex == -1) {
+                    MediaFormat newFormat = decoder.getOutputFormat();
+                    outputTrackIndex = muxer.addTrack(newFormat);
+                    muxer.start();
+                }
+                muxer.writeSampleData(outputTrackIndex, outputBuffer, bufferInfo);
+                decoder.releaseOutputBuffer(outputBufferIndex, false);
+            } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                // Not using this, using the format from the first buffer
+            }
+
+            if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                break;
+            }
+        }
+
+        decoder.stop();
+        decoder.release();
+        extractor.release();
+        muxer.stop();
+        muxer.release();
+    }
 
     public static void createWaveFile(String filePath, byte[] samples, int sampleRate, int numChannels, int bytesPerSample) {
         try {

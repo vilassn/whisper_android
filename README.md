@@ -146,3 +146,14 @@ For any inquiries or business-related discussions, feel free to reach out:
 📧 Email: vilassninawe@gmail.com
 
 Thank you for your support! 🚀
+
+
+@misc{nyadla-sys,
+  author={Niranjan Yadla},
+  title={{Whisper TFLite: OpenAI Whisper Model Port for Edge Devices}},
+  year=2022,
+  howpublished={GitHub Repository},
+  url={https://github.com/nyadla-sys/whisper.tflite},
+  note={Original TFLite implementation of OpenAI Whisper for on-device automatic speech recognition}
+}
+

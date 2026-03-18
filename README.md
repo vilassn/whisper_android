@@ -147,13 +147,20 @@ For any inquiries or business-related discussions, feel free to reach out:
 
 Thank you for your support! 🚀
 
+## Acknowledgements
 
+This project uses the following open-source implementation:
+
+- Niranjan Yadla (2022)  
+  *Whisper TFLite: OpenAI Whisper Model Port for Edge Devices*  
+  https://github.com/nyadla-sys/whisper.tflite
+
+```bibtex
 @misc{nyadla-sys,
-  author={Niranjan Yadla},
-  title={{Whisper TFLite: OpenAI Whisper Model Port for Edge Devices}},
-  year=2022,
-  howpublished={GitHub Repository},
-  url={https://github.com/nyadla-sys/whisper.tflite},
-  note={Original TFLite implementation of OpenAI Whisper for on-device automatic speech recognition}
+  author = {Niranjan Yadla},
+  title = {{Whisper TFLite: OpenAI Whisper Model Port for Edge Devices}},
+  year = 2022,
+  howpublished = {GitHub Repository},
+  url = {https://github.com/nyadla-sys/whisper.tflite},
+  note = {Original TFLite implementation of OpenAI Whisper for on-device automatic speech recognition}
 }
-

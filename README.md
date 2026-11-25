@@ -2,6 +2,11 @@
 
 This repository offers two Android apps leveraging the OpenAI Whisper speech-to-text model. One app uses the TensorFlow Lite Java API for easy Java integration, while the other employs the TensorFlow Lite Native API for enhanced performance. It also includes a Python script for model generation and pre-built APKs for straightforward deployment.
 
+## Try WhisperNote on Google Play
+
+**[WhisperNote](https://play.google.com/store/apps/details?id=com.wavebasics.whispernote)** — offline AI voice notes & Whisper speech-to-text on Android (audio stays on device).
+
+[![Get it on Google Play](https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png)](https://play.google.com/store/apps/details?id=com.wavebasics.whispernote)
 
 ## 📂 Folder Structure
 
